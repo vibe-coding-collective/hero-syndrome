@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import SignalTrace from './SignalTrace'
 
 export default function SendOne() {
@@ -18,8 +19,8 @@ export default function SendOne() {
               it sit in someone else&rsquo;s archive, unread, like a postcard
               that took the long way home.
             </p>
-            <button
-              type="button"
+            <Link
+              to="/scene"
               className="group mt-10 inline-flex items-baseline gap-3 px-7 py-4 border border-ink text-ink font-serif text-[18px] md:text-[20px] hover:bg-ink hover:text-paper transition-colors duration-300"
             >
               Begin a scene
@@ -29,7 +30,7 @@ export default function SendOne() {
               >
                 →
               </span>
-            </button>
+            </Link>
           </div>
 
           <div className="lg:col-span-7">

@@ -1,0 +1,23 @@
+{
+  "name": "worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "build": "wrangler deploy --dry-run --outdir=dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hero-syndrome/shared": "workspace:*",
+    "@hero-syndrome/llm": "workspace:*",
+    "@hero-syndrome/cosmic-vocab": "workspace:*",
+    "ulid": "^2.3.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251201.0",
+    "typescript": "^5.6.3",
+    "wrangler": "^4.85.0"
+  }
+}

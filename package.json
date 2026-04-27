@@ -4,10 +4,18 @@
   "private": true,
   "packageManager": "pnpm@9.12.3",
   "scripts": {
-    "dev": "pnpm --filter web dev",
-    "build": "pnpm --filter web build"
+    "dev:web": "pnpm --filter web dev",
+    "dev:worker": "pnpm --filter worker dev",
+    "build:web": "pnpm --filter web build",
+    "build:worker": "pnpm --filter worker build",
+    "deploy:worker": "pnpm --filter worker deploy",
+    "deploy:web": "pnpm --filter web build && wrangler pages deploy apps/web/dist --project-name hero-syndrome",
+    "typecheck": "pnpm -r typecheck",
+    "cosmic-vocab:gen": "pnpm --filter cosmic-vocab-gen run gen",
+    "preludes:gen": "pnpm --filter prelude-gen run gen"
   },
   "devDependencies": {
+    "typescript": "^5.6.3",
     "wrangler": "^4.85.0"
   }
 }

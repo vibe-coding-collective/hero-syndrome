@@ -1,0 +1,51 @@
+name = "hero-syndrome-worker"
+main = "src/index.ts"
+compatibility_date = "2026-04-01"
+compatibility_flags = ["nodejs_compat"]
+
+account_id = "532900b36c4560faf883f8bfcc308e56"
+
+# Generated audio + preludes + cosmic-vocab static blobs are uploaded to R2.
+[[r2_buckets]]
+binding = "AUDIO"
+bucket_name = "hero-syndrome-audio"
+
+# Single namespace, multiple prefixes (episode:, wx:, geo:, poi:, swpc:, cosmic-vocab:).
+# The id and preview_id values get filled in once `wrangler kv namespace create EPISODES` runs.
+[[kv_namespaces]]
+binding = "EPISODES"
+id = "d214219bddff44c1814241960770eba7"
+preview_id = "3fda2e4dcb3642a68847f526636fbebc"
+
+# Workers AI binding (used at runtime by the daily-rotation handler if we ever
+# embed live; the cosmic-vocab-gen CLI uses a temporary worker that also has
+# this binding).
+[ai]
+binding = "AI"
+
+# Strongly-consistent per-session state (one DO instance per sessionId).
+[[durable_objects.bindings]]
+name = "SESSION_DO"
+class_name = "SessionDO"
+
+# Single global reservoir of pre-fetched ANU quantum bytes.
+[[durable_objects.bindings]]
+name = "QUANTUM_DO"
+class_name = "QuantumDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SessionDO", "QuantumDO"]
+
+# */2 * * * *  - QuantumDO reservoir top-up
+# 0 0 * * *    - daily cosmic-vocab rotation (00:00 UTC)
+[triggers]
+crons = ["*/2 * * * *", "0 0 * * *"]
+
+# R2 lifecycle (configure via dashboard, not in wrangler.toml):
+# rule: prefix = "sessions/", expire after 7 days. "episodes/" prefix is
+# exempt; song audio is moved there at finalize time.
+
+[vars]
+USER_AGENT = "HeroSyndrome/0.1 (contact: danporder@gmail.com)"
+CORS_ORIGINS = "http://localhost:5173,https://hero-syndrome.pages.dev,https://herosyndrome.xyz"

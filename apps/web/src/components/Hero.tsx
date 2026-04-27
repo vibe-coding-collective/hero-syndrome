@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+
 export default function Hero() {
   return (
     <section className="border-b border-ink/15">
@@ -20,8 +22,8 @@ export default function Hero() {
         </div>
 
         <div className="mt-12 md:mt-16 flex flex-wrap items-baseline gap-x-8 gap-y-4">
-          <button
-            type="button"
+          <Link
+            to="/scene"
             className="group inline-flex items-baseline gap-3 px-7 py-4 border border-rust text-rust font-serif text-[20px] md:text-[22px] hover:bg-rust hover:text-paper transition-colors duration-300"
           >
             Begin scene
@@ -31,7 +33,7 @@ export default function Hero() {
             >
               →
             </span>
-          </button>
+          </Link>
           <a
             href="#archive"
             className="font-mono text-[11px] small-caps text-ink/65 hover:text-ink underline-offset-4 decoration-ink/30 hover:decoration-ink"
