@@ -16,3 +16,4 @@ dist
 packages/cosmic-vocab/data/eff-words-raw.txt
 packages/cosmic-vocab/data/eff-words.json
 packages/cosmic-vocab/data/evocativeness.json
+scene-permission-gate.png
