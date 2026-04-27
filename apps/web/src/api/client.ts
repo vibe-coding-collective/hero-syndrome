@@ -14,7 +14,7 @@ import type {
 
 export type WorkerOrigin = string;
 
-const API_PREFIX = '/api';
+const API_PREFIX = ((import.meta as any).env?.VITE_API_BASE ?? '/api') as string;
 
 async function jget<T>(path: string): Promise<T> {
   const res = await fetch(`${API_PREFIX}${path}`);

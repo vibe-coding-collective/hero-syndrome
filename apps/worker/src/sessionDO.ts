@@ -147,6 +147,8 @@ export class SessionDO {
       return Response.json(result.response satisfies GenerateRes);
     } catch (err) {
       this.appendDebug(s, 'generate.error', String(err));
+      // Don't keep the rate-limit penalty when we failed.
+      delete s.lastGenerateTs;
       await this.saveState(s);
       return new Response('generate failed', { status: 503 });
     }

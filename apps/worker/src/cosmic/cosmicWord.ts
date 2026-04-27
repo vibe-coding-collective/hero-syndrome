@@ -3,6 +3,7 @@ import embeddingsData from '@hero-syndrome/cosmic-vocab/approved-pool-embeddings
 import projectionData from '@hero-syndrome/cosmic-vocab/projection.json';
 import fluxStatsData from '@hero-syndrome/cosmic-vocab/flux-stats.json';
 import {
+  decodeQuantizedEmbeddings,
   isStubPool,
   type ApprovedPool,
   type ApprovedPoolEmbeddings,
@@ -12,9 +13,11 @@ import {
 import type { Env } from '../types';
 
 const POOL = poolData as ApprovedPool;
-const EMBEDDINGS = embeddingsData as ApprovedPoolEmbeddings;
+const EMBEDDINGS_RAW = embeddingsData as ApprovedPoolEmbeddings;
 const PROJECTION = projectionData as ProjectionMatrix;
 const FLUX_STATS = fluxStatsData as FluxStats;
+
+const EMBEDDINGS_DECODED = decodeQuantizedEmbeddings(EMBEDDINGS_RAW);
 
 export interface DailyVocab {
   date: string;
@@ -38,11 +41,11 @@ export interface CosmicWordResult {
 function isVocabReady(): boolean {
   return (
     !isStubPool(POOL) &&
-    !isStubPool(EMBEDDINGS) &&
+    !isStubPool(EMBEDDINGS_RAW) &&
     !isStubPool(PROJECTION) &&
     !isStubPool(FLUX_STATS) &&
     POOL.words.length > 0 &&
-    EMBEDDINGS.embeddings.length === POOL.words.length &&
+    EMBEDDINGS_DECODED.count === POOL.words.length &&
     PROJECTION.values.length === PROJECTION.rows * PROJECTION.cols &&
     FLUX_STATS.channelMeans.length === PROJECTION.rows
   );
@@ -101,13 +104,14 @@ function project(stdFlux: number[]): Float32Array {
 }
 
 function topMatch(query: Float32Array, indices: number[]): number {
+  const dim = EMBEDDINGS_DECODED.dim;
+  const values = EMBEDDINGS_DECODED.values;
   let bestI = indices[0]!;
   let bestSim = -Infinity;
   for (const idx of indices) {
-    const v = EMBEDDINGS.embeddings[idx];
-    if (!v) continue;
+    const off = idx * dim;
     let sim = 0;
-    for (let c = 0; c < query.length; c++) sim += query[c]! * (v[c] ?? 0);
+    for (let c = 0; c < dim; c++) sim += query[c]! * values[off + c]!;
     if (sim > bestSim) {
       bestSim = sim;
       bestI = idx;
@@ -147,9 +151,10 @@ export async function deriveCosmicWord(
 export const COSMIC_VOCAB_META = {
   poolVersion: POOL.version,
   projectionVersion: PROJECTION.version,
-  embeddingsVersion: EMBEDDINGS.version,
+  embeddingsVersion: EMBEDDINGS_RAW.version,
   fluxStatsVersion: FLUX_STATS.version,
   poolSize: POOL.words.length,
   projectionDim: PROJECTION.cols,
   channels: PROJECTION.rows,
+  embeddingsCount: EMBEDDINGS_DECODED.count,
 };

@@ -18,12 +18,20 @@ async function fetchKIndex(env: Env): Promise<number | null> {
   try {
     const res = await fetch(SWPC_KP_URL, { headers: { 'user-agent': env.USER_AGENT } });
     if (!res.ok) return null;
-    const arr = (await res.json()) as Array<[string, string, string, string]>;
-    const last = arr[arr.length - 1];
-    if (!last) return null;
-    const k = parseFloat(last[1]);
-    if (Number.isNaN(k)) return null;
-    return Math.max(0, Math.min(9, Math.round(k)));
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) return null;
+    const last = data[data.length - 1];
+    let kRaw: number | null = null;
+    if (last && typeof last === 'object' && !Array.isArray(last)) {
+      const obj = last as Record<string, unknown>;
+      const candidate = obj.Kp ?? obj.kp ?? obj.kp_index ?? obj.estimated_kp;
+      if (typeof candidate === 'number') kRaw = candidate;
+      else if (typeof candidate === 'string') kRaw = parseFloat(candidate);
+    } else if (Array.isArray(last) && last.length >= 2) {
+      kRaw = parseFloat(String(last[1]));
+    }
+    if (kRaw == null || Number.isNaN(kRaw)) return null;
+    return Math.max(0, Math.min(9, Math.round(kRaw)));
   } catch {
     return null;
   }

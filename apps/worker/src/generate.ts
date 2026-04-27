@@ -86,10 +86,9 @@ export async function runGenerate(
 
   let durationSec = composition.sections.reduce((acc, s) => acc + s.durationSec, 0);
   let musicLatencyMs = 0;
-  let preludeFallback = false;
 
+  const start = Date.now();
   try {
-    const start = Date.now();
     const rendered = await renderCompositionWithRetry({
       apiKey: ctx.env.ELEVENLABS_API_KEY,
       composition,
@@ -101,11 +100,12 @@ export async function runGenerate(
       httpMetadata: { contentType: rendered.contentType },
     });
   } catch (err) {
+    musicLatencyMs = Date.now() - start;
     if (err instanceof ElevenLabsError) {
-      preludeFallback = true;
-    } else {
+      // Surface as 503 to the client so it can fall back to a prelude.
       throw err;
     }
+    throw err;
   }
 
   const songRecord: SongRecordPersist = {
@@ -119,27 +119,19 @@ export async function runGenerate(
     quantumBytes: quantum,
   };
 
-  const response: GenerateRes = preludeFallback
-    ? ({
-        songId,
-        songUrl: '',
-        metadata,
-        composition,
-        durationSec,
-      } as GenerateRes)
-    : {
-        songId,
-        songUrl: `/api/song/${ctx.sessionId}/${songId}`,
-        metadata,
-        composition,
-        durationSec,
-      };
+  const response: GenerateRes = {
+    songId,
+    songUrl: `/api/song/${ctx.sessionId}/${songId}`,
+    metadata,
+    composition,
+    durationSec,
+  };
 
   const result: GenerateResult = {
     response,
     songRecord,
     musicLatencyMs,
-    preludeFallback,
+    preludeFallback: false,
   };
   if (typeof llmLatencyMs === 'number') result.llmLatencyMs = llmLatencyMs;
   if (llmTokens) result.llmTokens = llmTokens;

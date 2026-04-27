@@ -9,3 +9,10 @@ dist
 .cache
 *.tsbuildinfo
 .wrangler
+.playwright-mcp/
+
+# cosmic-vocab-gen intermediate caches (regenerable; only the four runtime
+# blobs in packages/cosmic-vocab/data/ are committed)
+packages/cosmic-vocab/data/eff-words-raw.txt
+packages/cosmic-vocab/data/eff-words.json
+packages/cosmic-vocab/data/evocativeness.json

@@ -18,9 +18,8 @@ export default defineConfig({
         orientation: 'portrait',
         start_url: '/',
         icons: [
-          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
-          { src: '/icons/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: '/icons/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+          { src: '/icons/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
         ],
       },
       workbox: {
@@ -28,7 +27,7 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api/, /^\/episode\//, /^\/song\//, /^\/preludes\//],
         runtimeCaching: [
           {
-            urlPattern: ({ url }) => url.pathname.startsWith('/api/preludes/manifest.json'),
+            urlPattern: ({ url }) => /\/preludes\/manifest\.json$/.test(url.pathname),
             handler: 'CacheFirst',
             options: {
               cacheName: 'preludes-manifest',
@@ -36,7 +35,7 @@ export default defineConfig({
             },
           },
           {
-            urlPattern: ({ url }) => /^\/api\/preludes\/.+\.mp3$/.test(url.pathname),
+            urlPattern: ({ url }) => /\/preludes\/[^/]+\.mp3$/.test(url.pathname),
             handler: 'CacheFirst',
             options: {
               cacheName: 'preludes-audio',
@@ -46,7 +45,7 @@ export default defineConfig({
           },
           {
             urlPattern: ({ url }) =>
-              /^\/api\/song\/.+\/.+$/.test(url.pathname) || /^\/api\/episode\/.+\/song\/.+$/.test(url.pathname),
+              /\/song\/[^/]+\/[^/]+$/.test(url.pathname) || /\/episode\/[^/]+\/song\/[^/]+$/.test(url.pathname),
             handler: 'CacheFirst',
             options: {
               cacheName: 'songs-audio',

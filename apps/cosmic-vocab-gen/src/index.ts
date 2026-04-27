@@ -34,17 +34,33 @@ async function main(): Promise<void> {
 
   log('Stage 3: compute embeddings via Workers AI (bge-small-en-v1.5)');
   const emb = await embedWordsViaWorker({ workerUrl, devToken, words: pool });
+  const N = emb.embeddings.length;
+  const D = emb.dim;
+  const ints = new Int8Array(N * D);
+  for (let i = 0; i < N; i++) {
+    const v = emb.embeddings[i]!;
+    for (let j = 0; j < D; j++) {
+      let q = Math.round(v[j]! * 127);
+      if (q > 127) q = 127;
+      if (q < -127) q = -127;
+      ints[i * D + j] = q;
+    }
+  }
+  const base64 = Buffer.from(ints.buffer).toString('base64');
   await fs.writeFile(
     PATHS.embeddings,
     JSON.stringify({
       version: poolDoc.version,
-      dim: emb.dim,
-      quantized: false,
-      embeddings: emb.embeddings,
+      dim: D,
+      count: N,
+      quantized: true,
+      encoding: 'int8-base64',
+      scale: 127,
+      data: base64,
     }),
     'utf8',
   );
-  log(`Embeddings written: ${emb.embeddings.length} × ${emb.dim}`);
+  log(`Embeddings written: ${N} × ${D} (int8-quantized, base64)`);
 
   log('Stage 4: generate projection matrix (deterministic seed)');
   const projection = generateProjection(13, 384, 42);
