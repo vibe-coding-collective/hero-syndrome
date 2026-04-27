@@ -72,6 +72,13 @@ export async function runGenerate(
     llmTokens = { input: composeResult.usage.input_tokens, output: composeResult.usage.output_tokens };
   } catch (err) {
     if (!(err instanceof AnthropicError)) throw err;
+    console.log(JSON.stringify({
+      ts: new Date().toISOString(),
+      sessionId: ctx.sessionId,
+      event: 'compose.fallback',
+      reason: err.message,
+      status: err.status,
+    }));
     const fb = ruleTableComposition({
       stateVector: req.stateVector,
       stickers: req.stickers,
@@ -96,7 +103,7 @@ export async function runGenerate(
     musicLatencyMs = Date.now() - start;
     durationSec = rendered.durationSec;
 
-    await ctx.env.AUDIO.put(sessionSongKey(ctx.sessionId, songId), rendered.body, {
+    await ctx.env.AUDIO.put(sessionSongKey(ctx.sessionId, songId), rendered.audio, {
       httpMetadata: { contentType: rendered.contentType },
     });
   } catch (err) {

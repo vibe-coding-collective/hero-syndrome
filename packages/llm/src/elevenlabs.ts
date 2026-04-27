@@ -20,10 +20,11 @@ export interface RenderCompositionInput {
 }
 
 export interface RenderCompositionResult {
-  body: ReadableStream<Uint8Array>;
+  audio: ArrayBuffer;
   contentType: string;
   durationSec: number;
   latencyToFirstByteMs: number;
+  totalLatencyMs: number;
 }
 
 function compositionToCompositionPlan(c: Composition) {
@@ -73,11 +74,16 @@ export async function renderComposition(input: RenderCompositionInput): Promise<
       text,
     );
   }
+  // R2 PUT needs a known length, and ElevenLabs streams without
+  // Content-Length, so buffer the full audio. A 3-6 min mp3 at 128 kbps
+  // sits at ~3-6 MB — well within Worker memory.
+  const audio = await res.arrayBuffer();
   return {
-    body: res.body,
+    audio,
     contentType: res.headers.get('content-type') ?? 'audio/mpeg',
     durationSec: totalDurationSec,
     latencyToFirstByteMs,
+    totalLatencyMs: Date.now() - start,
   };
 }
 

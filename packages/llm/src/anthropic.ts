@@ -204,7 +204,9 @@ export async function composeSong(input: ComposeSongInput): Promise<ComposeSongR
 
   const requestBody = {
     model: MODEL,
-    max_tokens: 800,
+    // Claude Haiku produces ~750-1000 output tokens for a full composition_plan.
+    // Tight ceilings truncate `composition` mid-tool-call (stop_reason="max_tokens").
+    max_tokens: 2000,
     temperature: 0.7,
     system: [
       {
