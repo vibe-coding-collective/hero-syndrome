@@ -4,13 +4,15 @@ Companion to `concept.md` and `architecture.md`. Read those first; this doc laye
 
 ## Goal
 
-Ship a playable end-to-end version of the art piece on iOS Safari and Android Chrome. The user can tap **Start scene**, hear an adaptive playlist of full-length songs that respond to time / motion / weather / location / their stickers, and end the scene to get a shareable episode URL that replays the same songs in order.
+Ship a playable end-to-end version of the art piece on iOS Safari and Android Chrome. The user can tap **Start scene**, hear an adaptive playlist of full-length songs that respond to time / motion / weather / location / Earth's electromagnetic mood / a daily-rotated cosmic word from particle flux / their stickers, and end the scene to get a shareable episode URL that replays the same songs in order.
 
 ## Scope decisions
 
 ### IN
 
 - Four signal sources: **clock, motion, weather, location**.
+- **Cosmic snapshot** at session start: NOAA's K-index (raw integer 0..9) plus solar wind speed and density, plus a *cosmic word* produced by random-projecting the latest GOES differential proton flux into a 384-dim word embedding space and finding the nearest neighbor in **today's** 256-word vocabulary. Today's vocab is redrawn every 24 hours at 00:00 UTC by Fisher-Yates sampling 512 fresh ANU quantum bytes against a stable ~2,000-word approved pool. One frozen reading per session, surfaced on the episode page with the vocab date and seed for verification.
+- **Quantum substrate.** Every small stochastic choice the score makes is drawn from a Quantum DO reservoir of pre-fetched ANU bytes (~16 bytes per `/generate`). Refilled every 2 minutes via storage alarm. Pseudo fallback (`crypto.getRandomValues`) when ANU is unreachable, disclosed on the episode page. Each episode carries a `quantumReceipt`.
 - **Stickers** as the user agency layer (tap-to-add, decaying; 5-min lifetime).
 - **Playlist of full songs** generated via ElevenLabs Music `composition_plan` (3–6 min each, queued back-to-back, brief 1–2 s gain ramp at boundaries — no long crossfade).
 - **Cold-start prelude bank** of 25 pre-generated short opener tracks (~30–60 s), bucketed by time-phase × intensity quintile, also reused as the runtime fallback when `/generate` fails.
@@ -23,7 +25,9 @@ Ship a playable end-to-end version of the art piece on iOS Safari and Android Ch
 
 ### OUT (explicit cuts)
 
-- **No astrology.** No onboarding modal, no birth-data fields, no transit signals. (Cut for cross-cultural reasons — the app should be universal.)
+- **No astrology, tarot, runes, zodiac, I Ching, or any tradition-specific symbolic system.** Cut for cross-cultural reasons — the app must be universal. (Memory: `feedback_cultural_neutrality.md`.)
+- **No personal text inputs (Notes, WhatsApp, journal).** Possible later via Notion OAuth or a Web Share Target intake, but cut from MVP to keep session-start friction at zero.
+- **No image input.** A photo-library picker (`<input type="file">`) plus on-device palette extraction is feasible and slots into the existing camera "later feature" slot. Deferred to keep first-run flow minimal.
 - **No microphone, no camera.** Both designed to slot in later (see *Later features*); deferred for first ship to avoid extra permission prompts and to validate the passive-sensor experience first.
 - **No server-side stitched audio.** The episode page replays the song list in order. No ffmpeg, no concatenation step, no exported `.mp3` per episode.
 - **No drag-drop stickers.** Tap-to-add only — drag-drop on iOS PWA is fiddly enough to defer.
@@ -38,6 +42,7 @@ Ship a playable end-to-end version of the art piece on iOS Safari and Android Ch
 - Target song length: 3–6 minutes (composition_plan total duration; 1–30 sections, each 3–120 s).
 - Generation rate-limit: 1 `/generate` per 10 s per `sessionId`, enforced inside the Session Durable Object.
 - Per-session state lives in a Session Durable Object (one DO instance per sessionId). Episodes (immutable post-finalize) live in KV. Audio in R2.
+- Quantum bytes for all stochastic choices live in a single global Quantum Durable Object reservoir, refilled every 2 minutes from ANU QRNG via Cron Trigger. `crypto.getRandomValues()` is the disclosed pseudo fallback when ANU is unreachable.
 - R2 lifecycle: `sessions/` prefix expires after 7 days; `episodes/` is exempt (audio is moved at finalize).
 - Idle timeout: 30 min hidden → auto-finalize on next visibility.
 - All API keys (ElevenLabs, Anthropic) live only on the Worker.
@@ -50,18 +55,20 @@ Monorepo with pnpm workspaces (smaller lockfiles + faster installs than npm; Clo
 hero-syndrome/
 ├─ apps/
 │  ├─ web/              # Vite + React + TS PWA
-│  ├─ worker/           # Cloudflare Worker router + Session Durable Object
-│  └─ prelude-gen/      # CLI, runs once per aesthetic refresh
+│  ├─ worker/           # Cloudflare Worker router + Session DO + Quantum DO
+│  ├─ prelude-gen/      # CLI, runs once per aesthetic refresh
+│  └─ cosmic-vocab-gen/ # CLI, runs once per approved-pool version
 ├─ packages/
 │  ├─ shared/           # StateVector, Sticker, SongMetadata, Composition, API types
-│  └─ llm/              # Anthropic + ElevenLabs call modules; imported by Worker + prelude-gen
+│  ├─ llm/              # Anthropic + ElevenLabs call modules; imported by Worker, prelude-gen, cosmic-vocab-gen
+│  └─ cosmic-vocab/     # Static blobs: approved-pool.json, approved-pool-embeddings.json, projection.json, flux-stats.json
 ├─ docs/                # concept.md, architecture.md, mvp-plan.md
 ├─ package.json
 ├─ pnpm-workspace.yaml
 └─ README.md
 ```
 
-`packages/shared` exists so the Worker and the web app can import the same `StateVector` / `SongMetadata` / `Composition` types — drift between client and server schemas is a real pain otherwise. `packages/llm` exists so `apps/worker` (for `/generate`) and `apps/prelude-gen` (for batch generating preludes) call the same Anthropic and ElevenLabs code.
+`packages/shared` exists so the Worker and the web app can import the same `StateVector` / `SongMetadata` / `Composition` types — drift between client and server schemas is a real pain otherwise. `packages/llm` exists so `apps/worker` (for `/generate`), `apps/prelude-gen` (for batch generating preludes), and `apps/cosmic-vocab-gen` (for the approved-pool evocativeness filter) call the same Anthropic code.
 
 ---
 
@@ -88,7 +95,7 @@ Type-only package, no runtime code. Lift the following types verbatim from `arch
 - `Sticker`
 - `SongMetadata`, `Composition`, `MeasuredFeatures`
 - `SessionRecord`, `EpisodeRecord`
-- API request/response shapes for every Worker endpoint (`GenerateReq`, `GenerateRes`, `WeatherRes`, `GeocodeRes`, `NearbyRes`, `EpisodeRes`, `FinalizeReq`, `FinalizeRes`)
+- API request/response shapes for every Worker endpoint (`GenerateReq`, `GenerateRes`, `WeatherRes`, `GeocodeRes`, `NearbyRes`, `CosmicRes`, `EpisodeRes`, `FinalizeReq`, `FinalizeRes`)
 - `PreludeManifest`
 
 ### `apps/worker` — Cloudflare Worker + Session Durable Object
@@ -108,17 +115,22 @@ The Worker is a thin HTTP router that forwards session-scoped requests to a Sess
 | `GET` | `/weather?lat&lon` | Open-Meteo proxy. WMO → `condition` mapping; sunrise/sunset proximity computed. KV cache 10 min. |
 | `GET` | `/geocode?lat&lon` | Nominatim reverse-geocode proxy. Returns derived `{ placeType, place, road, neighborhood, city }`. KV cache 30 days. |
 | `GET` | `/nearby?lat&lon` | Overpass proxy (`around:150`, top ~3 ranked POIs). KV cache 30 days. |
+| `GET` | `/cosmic` | Session-frozen cosmic snapshot. NOAA SWPC: K-index integer 0..9, solar wind speed + density, GOES 13-channel proton flux → cosmic word via fixed random projection into vocabulary embeddings. KV cache 30 min on the aggregate. Fail-soft per upstream (any single missing field is omitted, session proceeds). |
 | `GET` | `/debug/session/:sessionId` | Dev-token-gated. Returns the DO's per-session debug event log. |
 | `OPTIONS` | `*` | CORS preflight for `localhost:5173` and the production Pages origin. |
 
 #### Modules
 
-- `src/index.ts` — router, CORS, dispatch to Session DO for session-scoped routes.
-- `src/sessionDO.ts` — Session Durable Object class. Owns rate limiting, song-record append, debug log, finalize flow, 7-day cleanup alarm.
+- `src/index.ts` — router, CORS, dispatch to Session DO for session-scoped routes; dispatch to Quantum DO for reservoir pulls; route the `0 0 * * *` cron to the daily-rotation handler and the `*/2 * * * *` cron to QuantumDO refill.
+- `src/sessionDO.ts` — Session Durable Object class. Owns rate limiting, song-record append, debug log, finalize flow (including quantum receipt aggregation), 7-day cleanup alarm.
+- `src/quantumDO.ts` — Quantum Durable Object class (single global instance, `idFromName('reservoir')`). Owns the byte pool, atomic `pull(n)`, `refill()` from ANU, periodic alarm-triggered top-up, pseudo fallback with source labeling.
 - `src/generate.ts` — pure module called from inside the DO. Composes LLM + Music, streams to R2, returns the song record to append.
 - `src/episode.ts` — finalize + read helpers.
 - `src/r2.ts` — R2 streaming proxy + move-on-finalize helper (`sessions/` → `episodes/`).
 - `src/weather.ts`, `src/geocode.ts`, `src/nearby.ts` — upstream proxies, all cache-first.
+- `src/cosmic.ts` — NOAA SWPC orchestrator. Fetches K-index + solar wind + GOES differential proton flux in parallel, rounds K to integer, hands the proton flux off to the cosmic-word module, returns the assembled `cosmic` block.
+- `src/cosmic/cosmicWord.ts` — produces the cosmic word from a 13-channel proton flux vector. Loads `cosmic-vocab/{flux-stats, projection, approved-pool, approved-pool-embeddings}.json` once (module-load), reads today's active indices from KV (`cosmic-vocab:{today}`), applies log10 + standardize + project + L2-normalize, finds top-1 cosine neighbor among today's 256 active indices, returns the matched word along with method, source, vocabDate, and vocabSeed.
+- `src/cosmic/dailyRotation.ts` — scheduled handler invoked by the `0 0 * * *` cron. Pulls 512 bytes from QuantumDO, runs a Fisher-Yates partial shuffle of the approved pool seeded by the bytes, takes the first 256 indices, writes `cosmic-vocab:{today}` to KV with `{ indices, vocabSeed, generatedAtUtc, poolVersion, projectionVersion }`. Old keys expire at 30 days.
 - `src/title.ts` — episode title prompt (separate one-shot, ~30 tokens).
 - `src/kv.ts` — `writeEpisode`, `readEpisode`, cache helpers for upstream proxies.
 - `src/derivations/placeType.ts` — OSM-tag → `placeType` lookup table.
@@ -201,17 +213,45 @@ One-shot generator for the cold-start bank. Run on demand after prompt-template 
 - **`src/index.ts`** — for each bucket: call `packages/llm` with empty `recentHistory` and a constraint that the composition_plan has a single 30–60 s section (preludes are short opener tracks, not full songs); call ElevenLabs; upload `preludes/{id}.mp3` to R2 with `Cache-Control: public, max-age=86400, immutable`. Build `preludes/manifest.json` (with a `version` field for future rotations) and upload it to R2.
 - **Run once.** Listen to all 25 preludes. Regenerate any that feel wrong before declaring the bank done.
 
+### `apps/cosmic-vocab-gen` — CLI
+
+One-shot generator for the **stable approved pool** that today's daily vocabulary is drawn from. Run once per pool version (rarely). The daily 256-word selection is NOT done here — that runs as a Worker scheduled handler at 00:00 UTC every day. This CLI just produces the static substrate.
+
+Outputs land in `packages/cosmic-vocab/` and are committed to the repo:
+
+- **`approved-pool.json`** — ~2,000 words selected from the EFF Long Word List (7,776 words), filtered through Claude Haiku for evocativeness with a yes/no prompt per word. Versioned with `pool.version` (e.g. `"v1.2026-04"`).
+- **`approved-pool-embeddings.json`** — int8-quantized 384-dim L2-normalized embeddings for every word in the approved pool, computed offline with `@cf/baai/bge-small-en-v1.5` (Workers AI, batched via `wrangler ai run`). ~384 KB total.
+- **`flux-stats.json`** — per-channel mean and stddev for the 13 GOES proton flux channels, computed from a year of historical SWPC data. Used to standardize incoming flux vectors at runtime.
+- **`projection.json`** — fixed 13×384 random projection matrix, generated from a deterministic seed. Versioned with `projection.version`.
+
+The pool version, projection version, plus the daily `vocabDate` and `vocabSeed`, are all stamped on every `cosmic.cosmicWord` so any historical episode can be reproduced exactly.
+
+**Pipeline:**
+
+1. Download the EFF Long Word List from `https://www.eff.org/files/2016/07/18/eff_large_wordlist.txt`.
+2. Filter to the 7,776 word column. Drop the dice-roll prefix.
+3. Batch into ~150 groups of 50 words. For each batch, prompt Claude Haiku: *"Rate each of the following words for whether it is evocative and atmospheric, the kind of word that could direct a piece of music. Reply with one yes/no per word, no explanation."* Parse the response.
+4. Keep the yes-words. Pool size after filter is typically ~1,500–3,000.
+5. Compute embeddings for the kept words via Workers AI `@cf/baai/bge-small-en-v1.5`. L2-normalize. Quantize to int8.
+6. Generate `flux-stats.json` from a year of historical NOAA SWPC `differential-protons-7-day.json` records.
+7. Generate `projection.json` from a deterministic seed (e.g. `42`).
+8. Write all four blobs to `packages/cosmic-vocab/`. Commit.
+
+**Run frequency:** once per pool version. Realistically, once at MVP launch, then maybe every year or two if you want to refresh the pool. The daily 256-word picks happen continuously in the Worker without re-running this CLI.
+
 ### Episode title prompt
 
-Separate one-shot Claude call inside `/episode/:sessionId/finalize`:
+Separate one-shot Claude call inside `/episode/:sessionId/finalize`. The `timeline_json` payload includes signal changes, sticker events, song character summaries, plus the session's frozen `cosmic` block (K-index, solar wind, the cosmic word + its vocab date) so the title can pick up flavoring from any of these.
 
 ```
 You are titling an episode of someone's life.
-Read the timeline of signal changes, stickers, and song characters below
-and produce a single title:
+Read the timeline of signal changes, stickers, song characters, and the
+session's cosmic snapshot below, and produce a single title:
 - 4–10 words
 - evocative, slightly off-kilter
 - no quotes, no period at the end
+- the cosmic word is a flavoring hint, not a directive — feel free to use
+  it, transform it, or ignore it
 Return only the title.
 
 Timeline: {timeline_json}
@@ -265,14 +305,14 @@ Configure the R2 lifecycle rule (dashboard → R2 → bucket → Lifecycle): exp
 
 ### 4. Create the KV namespace
 
-Episodes and upstream proxy caches live here. (Per-session mutable state lives in the Durable Object, not KV.)
+A single KV namespace holds everything KV-shaped: episode records, upstream proxy caches (weather/geocode/nearby/swpc), and the daily-rotated cosmic vocabularies. Keys are prefixed (`episode:`, `wx:`, `geo:`, `poi:`, `swpc:`, `cosmic-vocab:`) so they coexist cleanly. Per-session mutable state lives in the Session Durable Object, not KV.
 
 ```bash
 pnpm wrangler kv namespace create EPISODES
 pnpm wrangler kv namespace create EPISODES --preview     # for local dev
 ```
 
-Both commands print an `id` and `preview_id`. Copy them.
+Both commands print an `id` and `preview_id`. Copy them. The namespace is named `EPISODES` for historical reasons; it actually carries every prefix listed above.
 
 ### 5. `apps/worker/wrangler.toml`
 
@@ -297,9 +337,19 @@ preview_id = "<preview id from step 4>"
 name = "SESSION_DO"
 class_name = "SessionDO"
 
+# Quantum Durable Object — single global reservoir of pre-fetched ANU bytes.
+[[durable_objects.bindings]]
+name = "QUANTUM_DO"
+class_name = "QuantumDO"
+
 [[migrations]]
 tag = "v1"
-new_classes = ["SessionDO"]
+new_classes = ["SessionDO", "QuantumDO"]
+
+# Periodic refill of the quantum reservoir from ANU QRNG (every 2 min)
+# Daily cosmic-vocab rotation at 00:00 UTC.
+[triggers]
+crons = ["*/2 * * * *", "0 0 * * *"]
 
 # R2 lifecycle — Cloudflare doesn't yet expose lifecycle in wrangler.toml,
 # so configure via the dashboard (or `wrangler r2 bucket lifecycle add`):
@@ -327,6 +377,8 @@ For local dev, mirror these in `apps/worker/.dev.vars` (gitignored):
 ANTHROPIC_API_KEY=sk-ant-...
 ELEVENLABS_API_KEY=...
 ```
+
+ANU QRNG and NOAA SWPC are keyless. No additional secrets needed.
 
 ### 7. Local dev
 
@@ -368,7 +420,9 @@ The Worker needs to allow `https://hero-syndrome.pages.dev` (and `http://localho
 
 The brief: *quirky, creative, interesting.* Avoid both bland-SaaS and overdesigned-portfolio. The piece is sincere about an absurd premise; the visuals should match.
 
-Some specific moves to try in Phase 9:
+The current landing page in `apps/web` is built (Fraunces + JetBrains Mono, paper / ink / rust palette, periodical-style colophon). The notes below apply to in-app surfaces (Scene, Episode page, sticker overlay, visualization).
+
+Some specific moves to try:
 
 - **Type.** A chunky display serif (Editorial New, Old Standard TT, free alternatives like Cooper Hewitt + a serif). Avoid Inter. Avoid SF.
 - **Color.** One bold accent against off-white in light mode, off-black in dark mode. The accent shifts subtly with `placeType` (cyan near water, sodium-orange in urban-night, sage in parks). Avoid gradients-on-everything.
@@ -393,6 +447,10 @@ Already in `architecture.md` under *Open technical questions*; the ones most lik
 5. **Nominatim / Overpass usage.** Both are free under "be a good citizen" rules. Cache aggressively (already in design) and identify yourself in `User-Agent`. If we ever share this beyond a demo, swap to Mapbox or Stadia.
 6. **DeviceMotion permission denial.** iOS users routinely deny motion. The fallback (clock + weather + location only) is degraded but still functional — make sure the app doesn't crash or sit silent.
 7. **R2 egress for song playback.** Each session is ~6 songs × ~5 MB = ~30 MB. Multiple users replaying episodes adds up but stays within Cloudflare's free tier (1M class-B ops/month, ~10 GB egress) for MVP demo traffic.
+8. **ANU QRNG availability.** ANU has no SLA on the QRNG endpoint and historically goes down for hours at a time. The Quantum DO buffers ~1024 bytes refilled every 2 minutes via storage alarm; this comfortably covers expected demand (~16 per `/generate`). When the reservoir drains, `pull(n)` falls back to `crypto.getRandomValues()` and labels the source `pseudo` or `mixed`. The episode `quantumReceipt` discloses honestly. Acceptable for MVP. Tune watermarks once we have real session-rate telemetry.
+9. **Approved pool distribution skew.** The ~2,000-word approved pool defines what every future cosmic word can be. Daily rotation samples uniformly from it, but the projection's distribution over real-world flux may still concentrate around a small subset of words within any given day's 256. Mitigation: after pool generation, run a year of historical flux records through the projection and check distribution across the full pool. Iterate the pool if it's too peaked. Re-curating the pool later changes the universe of possible words across all future days, so the pool is versioned and stamped on each `cosmicWord`.
+10. **GOES particle flux availability.** GOES differential-protons normally updates every minute, but the JSON endpoint can lag or return stale records during satellite handovers or outages. Fail-soft: if the latest record is older than 30 minutes, omit `cosmicWord` from the session rather than producing a word from stale data. This is honest disclosure (no word is better than a stale word).
+11. **Daily rotation cron failure.** If the `0 0 * * *` cron handler fails (Worker outage, ANU outage, KV write fails), today's `cosmic-vocab:{today}` key is missing. The runtime falls back to yesterday's vocab and stamps `vocabDate` to yesterday so the episode reflects what was actually used. If both are missing (cold start before any rotation has run), `cosmicWord` is omitted. Acceptable for MVP. Skipped days are part of the historical record, not backfilled.
 
 ---
 

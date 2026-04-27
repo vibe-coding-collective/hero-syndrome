@@ -1,0 +1,13 @@
+{
+  "name": "hero-syndrome",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@9.12.3",
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm --filter web build"
+  },
+  "devDependencies": {
+    "wrangler": "^4.85.0"
+  }
+}

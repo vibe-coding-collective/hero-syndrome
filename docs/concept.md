@@ -24,9 +24,19 @@ The state vector is the narrative spine. Each signal is chosen because it alread
 - **Weather** — temperature, condition, sunrise/sunset proximity.
 - **Location semantics** — not coordinates. "Walking in a park." "In a vehicle on an urban street." "Still, near water."
 - **Movement intensity** — accelerometer-derived. Classified as *still / walking / running / vehicle* plus a continuous intensity value.
+- **Earth's electromagnetic mood** — NOAA's K-index as a raw integer 0..9, with solar wind speed and density alongside. Heart rate of the planet, not the user. Impersonal by design and not tied to any cultural tradition.
+- **A cosmic word** — drawn from particle radiation. NOAA's GOES satellites publish 13 channels of differential proton flux at energies between 1.02 MeV and 404 MeV. The current 13-vector is projected through a fixed random matrix into the embedding space of a small language model, and the nearest neighbor in *today's* 256-word vocabulary becomes the session's *cosmic word*. The vocabulary itself rotates daily at 00:00 UTC, redrawn by 512 fresh ANU quantum bytes from a stable approved pool of ~2,000 culturally neutral words. Same flux on a different day produces a different word. Replays of old episodes keep their original word, recorded against the vocabulary date that produced it. The art piece commits to the provenance, not the meaning. The episode page discloses the method, the sample timestamp, and the vocabulary date.
 - **Mood stickers** — your editorial voice in the score.
 
-An LLM reads the vector and writes a short, evocative music prompt. ElevenLabs Music turns it into a clip. A two-clip buffer with crossfade makes the stream continuous; every clip boundary is a chance for the music to shift.
+### Quantum substrate
+
+Beneath the inputs, the entire piece is committed to a quantum substrate. Every small stochastic choice the score has to make — which BPM inside the LLM's proposed range, which key when several would work, which instrument leads, where a section breaks — is drawn from quantum vacuum, not pseudorandom. ANU's bytes feed a pool that the system samples from per song. A listener cannot tell the difference. The artist can. The art piece commits to the provenance.
+
+When the upstream is unreachable, the system falls back to ordinary cryptographic randomness and discloses it on the episode page. Honesty over silent substitution.
+
+Every episode therefore carries a *quantum receipt* — a count of bytes consumed and a source label (`qrng`, `mixed`, or `pseudo`). The receipt is small and quiet on the page. It is the closest the piece gets to a signature.
+
+An LLM reads the vector and the cosmic snapshot together, then writes a short, evocative music prompt. ElevenLabs Music turns it into a clip. A two-clip buffer with crossfade makes the stream continuous; every clip boundary is a chance for the music to shift.
 
 ## Mood stickers
 

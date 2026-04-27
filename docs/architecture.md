@@ -9,12 +9,15 @@
 | State | Zustand | Minimal, no boilerplate |
 | PWA | `vite-plugin-pwa` | Installable on iOS home screen |
 | Audio | Web Audio API | Two-buffer playlist queue, gain automation, analyzer nodes |
-| Backend | Cloudflare Worker + Durable Objects | Edge latency, free tier; DO gives strongly-consistent per-session state |
+| Backend | Cloudflare Worker + Durable Objects | Edge latency, free tier; DO gives strongly-consistent per-session state and a globally-shared quantum reservoir |
 | Storage | Cloudflare R2 + KV | R2 for audio blobs; KV for episode index + upstream proxy cache (sessions live in DO storage) |
 | LLM | Claude Haiku 4.5 (Anthropic API) | Fast, cheap, strong at short evocative writing |
 | Music | ElevenLabs Music API | Already chosen; free credits available |
 | Weather | Open-Meteo | Free, keyless, no auth |
 | Geocoding | Nominatim (OpenStreetMap) | Free; must cache aggressively to respect TOS |
+| Quantum substrate | ANU Quantum Random Numbers Server | Free public quantum-vacuum bytes; pre-fetched into a global reservoir, sampled per `/generate` to seed the LLM's small stochastic choices |
+| Space weather | NOAA SWPC | Free real-time K-index and solar wind; "Earth's electromagnetic mood" |
+| Particle flux | NOAA SWPC GOES differential protons | Free real-time 13-channel proton flux 1.02–404 MeV; projected into a word embedding space to produce one "cosmic word" per session |
 | Auth | None (MVP) | Episodes identified by opaque URLs |
 
 ## System diagram
@@ -34,24 +37,30 @@
 └─────────────────────────────────┬───────────────────────────────────────┘
                                   │ HTTPS
                                   ▼
-┌────────── Cloudflare Worker (router) + Session Durable Object ────────┐
+┌────────── Cloudflare Worker (router) + Session DO + Quantum DO ───────┐
 │  POST /generate                                                        │
 │    Req:  { sessionId, stateVector, stickers, recentHistory }           │
-│    1. Build LLM prompt → Claude Haiku (tool use) → composition_plan    │
-│    2. ElevenLabs Music with composition_plan → full song audio         │
-│    3. Stream song into R2                                              │
-│    4. Append song record to Session DO                                 │
+│    1. QuantumDO.pull(16) → quantum_bytes batch                         │
+│    2. Build LLM prompt → Claude Haiku (tool use) → composition_plan    │
+│    3. ElevenLabs Music with composition_plan → full song audio         │
+│    4. Stream song into R2                                              │
+│    5. Append song record (incl. quantum_bytes consumed) to Session DO  │
 │    Ret:  { songId, songUrl, metadata, composition, durationSec }       │
 │                                                                         │
+│  GET  /cosmic            (NOAA SWPC space weather)                     │
 │  POST /episode/:sessionId/finalize                                     │
 │  GET  /episode/:episodeId                                              │
 │  GET  /geocode?lat&lon   (proxied Nominatim, KV-cached)                │
 │  GET  /nearby?lat&lon    (proxied Overpass,  KV-cached)                │
 │  GET  /weather?lat&lon   (proxied Open-Meteo, KV-cached)               │
+│                                                                         │
+│  QuantumDO (single global instance)                                    │
+│    refill alarm every 2 min → fetch 1024 bytes from ANU QRNG          │
+│    pull(n) atomically dequeues n bytes; pseudo-fallback when empty    │
 └────────────────────────────────────────────────────────────────────────┘
                                   │
                                   ▼
-        ElevenLabs  │  Anthropic  │  Open-Meteo  │  Nominatim  │  Overpass
+  ElevenLabs │ Anthropic │ Open-Meteo │ Nominatim │ Overpass │ ANU QRNG │ NOAA SWPC (K-index + GOES flux)
 ```
 
 ## Client architecture
@@ -120,20 +129,22 @@ Request:  { sessionId, stateVector, stickers, recentHistory }
 Steps:
   1. Router forwards the request to Session DO `idFromName(sessionId)`.
   2. DO checks rate limit (1 req / 10 s per session) using its own storage.
-  3. Build the LLM system+user prompt (below); include recentHistory as
-     continuity + curation context.
-  4. Call Anthropic: model=claude-haiku-4-5, temperature=0.7, max_tokens=800,
+  3. DO calls QuantumDO.pull(16) to dequeue the per-song quantum batch.
+     The returned { bytes, source } is held for steps 4 and 7.
+  4. Build the LLM system+user prompt (below); include recentHistory as
+     continuity + curation context, and pass quantum_bytes verbatim.
+  5. Call Anthropic: model=claude-haiku-4-5, temperature=0.7, max_tokens=800,
      `tool_choice` forces a single tool call to `compose_song` whose
      input_schema is { metadata, composition }. Returns a parsed object,
      no JSON parsing layer.
-  5. Call ElevenLabs Music with the `composition` (composition_plan +
+  6. Call ElevenLabs Music with the `composition` (composition_plan +
      overall prompt). Target song length 3–6 min.
-  6. Stream audio bytes from ElevenLabs straight into R2 at key
+  7. Stream audio bytes from ElevenLabs straight into R2 at key
      `sessions/{sessionId}/songs/{songId}.mp3` — never buffer the full
      song in Worker memory.
-  7. Append { songId, metadata, composition, stateVector, stickers,
-     createdAt } to the session in DO storage.
-  8. Return { songId, songUrl, metadata, composition, durationSec }.
+  8. Append { songId, metadata, composition, stateVector, stickers,
+     quantumBytes, createdAt } to the session in DO storage.
+  9. Return { songId, songUrl, metadata, composition, durationSec }.
 Failure modes:
   - LLM fails:           fall back to a deterministic composition_plan
                          derived from the state vector via a rule table.
@@ -153,12 +164,16 @@ Steps:
   2. DO loads its own session state.
   3. If no title, ask Claude (separate one-shot, ~30 tokens) to generate
      one from the signal/sticker/song timeline.
-  4. Write `episodes/{episodeId}` to KV with a fresh opaque ULID.
-  5. Copy/move song blobs from `sessions/{sessionId}/songs/*` to
+  4. Aggregate the session's quantum receipt: sum bytes consumed
+     (16 per song, summed across all songs) and pick the worst-case
+     source label across all pulls (any 'pseudo' or 'mixed' beats a
+     clean 'qrng' label).
+  5. Write `episodes/{episodeId}` to KV with a fresh opaque ULID.
+  6. Copy/move song blobs from `sessions/{sessionId}/songs/*` to
      `episodes/{episodeId}/songs/*` so they survive the session R2
      lifecycle rule (see Deployment).
-  6. Mark the DO finalized; DO storage gets a 7-day deletion alarm.
-  7. Return { episodeId, shareUrl }.
+  7. Mark the DO finalized; DO storage gets a 7-day deletion alarm.
+  8. Return { episodeId, shareUrl }.
 ```
 
 ### `GET /episode/:id`
@@ -195,6 +210,71 @@ Proxies Open-Meteo. Requests:
 - `daily=sunrise,sunset`
 
 The Worker maps `weather_code` → `condition` via the WMO table in *Derivations*, computes `sunriseProximityMin` / `sunsetProximityMin` from the current time against today's sunrise/sunset, and returns the fully populated `StateVector.weather` shape. No API key required for non-commercial use. KV cache keyed by `wx:{roundedLat}:{roundedLon}`, 10-minute TTL.
+
+### `GET /cosmic`
+
+Returns the session-frozen `cosmic` block. Fetched once at session start (alongside the prelude pick) and cached in the Session DO so the LLM sees the same snapshot for every song in the session. The Worker fans out to all upstream calls in parallel; any single one failing simply omits its field from the response.
+
+Three NOAA SWPC fetches in parallel:
+
+- **K-index**: `https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json` — the latest planetary K-index, rounded to integer 0..9. Shipped raw; no categorical band, no narrative label.
+- **Solar wind plasma**: `https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json` — speed (km/s) and density (particles/cm³) at the latest sample.
+- **GOES differential proton flux**: `https://services.swpc.noaa.gov/json/goes/primary/differential-protons-6-hour.json` — 13 energy bands from 1.02 MeV to 404 MeV. The Worker takes the latest record's 13-channel vector, runs the cosmic-word derivation (see *Derivations: GOES proton flux → cosmic word*), and ships `{ word, flux, method, source }` in `cosmic.cosmicWord`.
+
+KV cache keyed by `swpc:{floor(unixMin/30)}`, 30-min TTL on the aggregate response. The Worker rounds the K-index to integer, computes the cosmic word inline, and returns the assembled cosmic block.
+
+No upstream call needs the user's location; the proxy must never forward `lat`/`lon` to NOAA. Fail-soft per upstream: K-index missing means `cosmic.spaceWeather.kIndex` is omitted, particle flux missing means `cosmic.cosmicWord` is omitted. The session proceeds either way.
+
+## Quantum reservoir
+
+Hero Syndrome treats the small stochastic choices the score has to make as drawn from quantum vacuum, not from pseudorandom. This is a philosophical commitment, not a perceptual one. A listener cannot tell quantum from pseudo. The artist can. The art piece commits to the provenance.
+
+This is implemented as a single globally-shared **Quantum Durable Object** (`QuantumDO`, idFromName `'reservoir'`) that maintains a buffered pool of pre-fetched ANU QRNG bytes and serves atomic dequeue requests to the Worker.
+
+### Why a DO and not KV
+
+KV is eventually consistent. Two concurrent `/generate` calls reading and writing the byte pool would race and possibly serve the same bytes to both — bytes are still genuinely quantum, but the uniqueness story breaks. The QuantumDO gives strongly-consistent atomic `pull(n)`. Cheap, simple, fits the existing DO infra.
+
+### API
+
+```typescript
+class QuantumDO {
+  // Atomically dequeue n bytes from the head of the reservoir.
+  // Returns { bytes, source } where source is:
+  //   'qrng'   — all n bytes from ANU
+  //   'mixed'  — partial drain, remaining filled from crypto.getRandomValues()
+  //   'pseudo' — reservoir empty, all n bytes pseudo
+  pull(n: number): Promise<{ bytes: number[]; source: 'qrng' | 'mixed' | 'pseudo' }>;
+
+  // Refill the reservoir from ANU QRNG. Called by alarm and on low-watermark.
+  refill(): Promise<void>;
+
+  // Alarm handler — fires every 2 min, calls refill() if pool < 256 bytes.
+  alarm(): Promise<void>;
+}
+```
+
+### Storage
+
+The DO holds the byte pool in its own storage as a single key `pool` containing a `Uint8Array` (encoded for storage). Length high-watermark `~1024` bytes, low-watermark `256`. Each `pull(n)` slices from the head and writes the tail back atomically inside the DO's single-threaded execution model, so racing pulls cannot serve the same bytes.
+
+### Refill
+
+Two refill triggers:
+
+1. **Alarm-based.** A storage alarm fires every 2 minutes. The handler checks `pool.length`; if below `256`, calls `refill()` to fetch 1024 fresh bytes from ANU and append.
+2. **On-demand.** `pull(n)` itself triggers `refill()` asynchronously (fire-and-forget) when the pool drops below `256` after the dequeue. The pull itself is not blocked by the refill.
+
+A single ANU call returns up to 1024 bytes per request. ANU's published rate limit is 1 request per 60 seconds per IP, so the cron alarm at 2-minute cadence is well below the limit and the on-demand refill paths are de-duplicated by an in-DO `refillInFlight` flag.
+
+### Pseudo fallback
+
+When ANU is genuinely unreachable for an extended period (or rate-limited unexpectedly), the pool drains. `pull(n)` then falls back to `crypto.getRandomValues()` for the remaining bytes and returns `source: 'mixed'` or `source: 'pseudo'`. The `cosmic.draw.source` and the per-song `quantumBytes.source` fields disclose this to the episode page so the user sees the truth. No silent substitution.
+
+### Consumers
+
+- **`POST /generate`** pulls 16 bytes per call. They go to the LLM as `quantum_bytes` with explicit instructions to use them as the source of any small numerical or categorical choice in the composition (BPM within range, key, instrumentation order, section count, instrument selection from a list). The bytes consumed are stored on the song record so the episode artifact can render the session's quantum receipt.
+- **Daily cosmic-vocab rotation handler** (cron at `0 0 * * *` UTC) pulls 512 bytes per fire and uses them to Fisher-Yates pick 256 fresh indices from the approved pool, writing the result to KV at `cosmic-vocab:{today}`. ~512 bytes/day, negligible for the reservoir.
 
 ## Data schemas
 
@@ -246,6 +326,22 @@ type StateVector = {
     intensityNormalized: number;        // 0..1
     pattern: 'still' | 'steady' | 'rhythmic' | 'erratic';
   };
+  cosmic?: {
+    spaceWeather?: {
+      kIndex: number;                   // 0..9 (rounded to integer); raw, no narrative band
+      solarWindSpeedKmS: number;
+      solarWindDensity: number;
+    };
+    cosmicWord?: {
+      word: string;                     // nearest-neighbor token from today's 256-word active vocab
+      flux: number[];                   // raw 13-channel GOES proton differential flux at fetch time
+      method: 'random-projection-bge-small';   // disclosed projection method
+      source: 'goes-proton-differential' | 'pseudo';  // 'pseudo' if NOAA was unreachable
+      fetchedAtUtc: string;             // ISO timestamp of the upstream sample
+      vocabDate: string;                // YYYY-MM-DD UTC; the active vocabulary on this date
+      vocabSeed: string;                // hex of the 512 quantum bytes used to draw today's vocab
+    };
+  };
 };
 
 type Sticker = {
@@ -293,6 +389,7 @@ type SessionRecord = {
   sessionId: string;
   startedAt: string;
   endedAt?: string;
+  cosmic?: NonNullable<StateVector['cosmic']>; // session-frozen oracle from /cosmic
   songs: Array<{
     songId: string;
     startedAt: string;
@@ -302,6 +399,10 @@ type SessionRecord = {
     measuredFeatures?: MeasuredFeatures; // populated by client after playback begins
     stateVector: StateVector;
     stickers: Sticker[];
+    quantumBytes: {                        // pulled from QuantumDO at /generate time
+      bytes: number[];                     // typically 16
+      source: 'qrng' | 'mixed' | 'pseudo';
+    };
   }>;
   stickerEvents: Array<{ emoji: string; placedAt: string }>;
 };
@@ -309,6 +410,10 @@ type SessionRecord = {
 type EpisodeRecord = SessionRecord & {
   episodeId: string;
   title: string;
+  quantumReceipt: {                        // aggregated across the whole session
+    totalBytesConsumed: number;            // sum of cosmic.draw byte + per-song bytes
+    source: 'qrng' | 'mixed' | 'pseudo';   // worst-case label across all pulls
+  };
 };
 ```
 
@@ -355,6 +460,41 @@ Applied to Open-Meteo's `current.weather_code`.
 | 85, 86        | `snow-showers`        |
 | 95            | `thunderstorm`        |
 | 96, 99        | `thunderstorm-hail`   |
+
+### NOAA K-index
+
+NOAA's planetary K-index is rounded to an integer 0..9 and shipped raw. No categorical band, no narrative label. The LLM is told the integer's range and that it represents Earth's geomagnetic activity (0 quiet, 9 severe). Interpretation is left entirely to the model.
+
+### GOES proton flux → cosmic word
+
+This derivation produces one "cosmic word" per session by random-projecting the latest GOES differential proton flux vector into a word embedding space and finding its nearest neighbor in **today's active 256-word vocabulary**, which itself is redrawn at 00:00 UTC every day from a stable approved pool. The mapping is *aesthetically pure but semantically arbitrary*: the word is causally produced by the actual state of solar particle radiation, but the projection has no learned semantic structure. The art-piece commitment is provenance, not perception. The episode page discloses the method.
+
+**Inputs.** The 13-channel differential proton flux vector from NOAA SWPC's GOES `differential-protons-6-hour.json`. The latest record's `flux` array, in protons/(cm² s sr keV), at energies 1.02–404 MeV.
+
+**Preprocessing.** Flux values span many orders of magnitude. The Worker computes `x_i = log10(flux_i + 1e-6)` per channel, then standardizes against precomputed per-channel mean and stddev (estimated once from a year of historical data, shipped as `cosmic-vocab/flux-stats.json`). The standardized 13-vector is the input to the projection.
+
+**Projection.** A fixed 13×384 random matrix `M`, generated once at design time from a deterministic seed and shipped as `cosmic-vocab/projection.json`. The query embedding is `q = normalize(x · M)` where `normalize` is L2-normalization. The matrix is identical for every user and every session; the only thing that varies is `x`.
+
+**Approved pool (stable).** ~2,000 culturally neutral English words sourced from the EFF Long Word List (7,776 words) and filtered offline by Claude Haiku for evocativeness. The pool, the matching int8-quantized embeddings (~384 KB total), the projection matrix, and the flux stats are all committed to the repo under `packages/cosmic-vocab/`. Generation is one-shot (see `apps/cosmic-vocab-gen` in the MVP plan). The pool stays stable across many vocabulary versions.
+
+**Active vocabulary (rotates daily).** At 00:00 UTC every day, a Worker scheduled handler pulls 512 fresh quantum bytes from the QuantumDO reservoir, runs a Fisher-Yates partial shuffle of the approved pool seeded by those bytes, and writes the resulting 256 indices to KV at key `cosmic-vocab:{YYYY-MM-DD}` along with the byte sequence as `vocabSeed`. The previous day's KV entry stays for 30 days for verification, then expires.
+
+**Lookup.** At session start, the Worker reads today's `cosmic-vocab:{date}` from KV (cached locally per Worker isolate), takes the 256 active indices, and does cosine similarity (dot product, since both query and vocab embeddings are L2-normalized) between `q` and each active embedding. Top-1 wins. The matched word ships in `cosmic.cosmicWord.word`, along with `vocabDate` and `vocabSeed` for full disclosure.
+
+**Vocabulary curation rules** (applied once during approved-pool generation):
+
+- **No proper nouns.** No people, no places, no brands.
+- **No tradition-specific symbols.** No tarot, runes, hexagrams, zodiac, religious or mythological referents.
+- **No English idioms or slang.** Words readable as themselves to a non-native English reader.
+- **Evocativeness filter.** Each candidate from the EFF list is rated yes/no by Claude Haiku for whether it is the kind of word that could direct a piece of music. Only yes-words enter the approved pool.
+
+What ends up in the pool: gerunds and verbs of motion or change (`crossing`, `kindling`, `thawing`, `narrowing`), abstract nouns of state or quality (`threshold`, `weight`, `distance`, `hush`), generic natural phenomena (`updraft`, `low cloud`, `tidewater`, `dry grass`), and concrete neutrally-connotated objects (`stone`, `lantern`, `drift`, `seam`).
+
+**Daily rotation rationale.** A static 256-word vocabulary would be one curator's taste forever. Daily rotation makes the vocabulary itself a quantum-blessed artifact, redrawn from the stable pool by ANU's bytes at midnight UTC. Same flux pattern produces different words across different days. Replays of old episodes still surface the original word (it is stored on the episode record), but the vocabulary that produced it is now historically dated. The daily ritual layer pairs with the quantum substrate (per song) and the cosmic word itself (per session) as three layers of provenance.
+
+**Fallback when today's vocab is missing.** If the cron job failed and `cosmic-vocab:{today}` is missing, the Worker falls back to `cosmic-vocab:{yesterday}` and stamps `cosmicWord.vocabDate` accordingly. This reflects what the user actually heard. If both are missing (genuinely cold start before any cron run), `cosmicWord` is omitted entirely — no fake vocabulary.
+
+**Disclosure.** The episode page renders the cosmic word alongside the method, the upstream timestamp, and the vocabulary date, e.g. *"`kindling` (GOES proton flux at 14:22 UTC, from the vocabulary of April 27, 2026)."* When NOAA's particle endpoint is unreachable, `cosmicWord` is omitted entirely from the cosmic block — no pseudo substitute, no fake word.
 
 ### Motion classifier
 
@@ -432,11 +572,31 @@ CURATION RULES (this is a playlist, not a stitched stream):
 - Instrumental only — no lyrics, no vocal lines.
 - Prefer specific over abstract. Cinematic but never obvious. Avoid clichés.
 
+RANDOMNESS:
+The `quantum_bytes` array is your source of any small stochastic choice.
+Each byte is uniform on 0..255. Use them in order. When you would
+otherwise rely on internal randomness — picking a BPM inside a range,
+choosing a key from several plausible options, deciding which instrument
+leads, choosing the section count, picking modal flavor — sample from
+`quantum_bytes` instead. Map them to choices via modular arithmetic or
+threshold tests as appropriate. The bytes are not part of the
+composition's text. They are the substrate of its small choices. This is
+a philosophical commitment of the piece. Honor it.
+
 User:
 State: {state_vector_json}
 Active stickers: {stickers_json}
+Cosmic snapshot: {cosmic_json}
+Quantum bytes: {quantum_bytes_json}
 Recent history (most recent last): {recent_history_json}
 ```
+
+`cosmic_json` is the same `cosmic` block snapshotted at session start (see *`GET /cosmic`*). It does not refresh between songs. Two fields:
+
+- `spaceWeather`: K-index integer plus solar wind speed and density. Information about the planet, not an instruction.
+- `cosmicWord`: a single word produced by random-projecting current GOES proton flux into a vocabulary embedding space (see *Derivations: GOES proton flux → cosmic word*). The LLM is told the word's source and method and instructed to treat it as a directorial *hint* with explicit license to honor or rebel.
+
+`quantum_bytes_json` is a fresh ~16-byte batch pulled from the Quantum DO reservoir at the moment this `/generate` call started. It is per-song, not session-frozen. The bytes consumed are stored on the song record so the episode artifact can render the session's quantum receipt.
 
 The returned `composition` is passed verbatim as `composition_plan` to the
 ElevenLabs Music API. The full `{ metadata, composition, stateVector }` is
@@ -588,6 +748,12 @@ User-level analytics are out (per the art-piece framing — no accounts, no rete
 7. **Motion classifier thresholds.** The numbers in *Derivations* are placeholders. Collect real traces during the spike — particularly for `walking` vs `still` on a phone held loosely vs. in a pocket, and `vehicle` false-positives on fast escalators / trains.
 8. **Prelude bucketing scheme.** The 5×5 time-phase × intensity-quintile grid is a starting point. Production telemetry will show which buckets most cold starts fall into; we may want to weight slots unevenly, expand to 50, or introduce a secondary axis (weather?) once we have data.
 9. **ElevenLabs cost beyond free credits.** Free credits cover MVP. A long-running demo at meaningful scale will exceed them. Need to understand the per-song cost curve and either budget for it, switch to a self-hosted model (MusicGen), or pivot to a stem-based hybrid where most audio is pre-generated and live composition is reduced to mixing.
+10. **ANU QRNG availability and reservoir sizing.** ANU has no SLA on the QRNG endpoint and historically goes down for hours. The Quantum DO buffers 1024 bytes refilled every 2 minutes via storage alarm — comfortably covers expected demand (~16 per `/generate`). When the reservoir drains, `pull(n)` falls back to `crypto.getRandomValues()` and labels the source `pseudo` or `mixed`. The episode artifact discloses. Open: tune the high/low watermarks (1024 / 256) once we have real session-rate telemetry. If demand spikes hit the watermarks during outages, raise the high-water mark or shorten the alarm cadence.
+11. **Quantum batch size for `/generate`.** 16 bytes per song is a generous starting point for the LLM's small choices. Composition_plan with up to 30 sections × a handful of choices each could in principle want more. Open empirical question: does Claude actually consume the bytes meaningfully, and does the variation it produces feel different from temperature alone? Measure during the first end-to-end spike. The contract is unchanged either way; only the array size is tuned.
+12. **Approved pool curation distribution.** The ~2,000-word approved pool defines the universe every daily vocabulary draws from. After the EFF + Claude filter pass, sample a year of historical proton flux records, run them through the projection, and check the distribution of nearest-neighbor hits across the pool. If a small subset accounts for most hits, iterate the pool. Re-curating the pool later changes the universe of possible cosmic words across all future days. The pool is versioned so old episodes can be cross-referenced if needed.
+13. **Random projection seed and matrix versioning.** The projection matrix is fixed at design time. Re-seeding it changes every cosmic word in every replay. Stamp the matrix version on each `cosmicWord` alongside the vocabulary date and pool version, so historical episodes keep their original word even if the matrix is regenerated for a future cohort. Open: do we ever want to regenerate it? Probably not, but the option exists.
+14. **GOES particle flux availability.** GOES differential-protons updates every minute under normal operation but the JSON endpoint can lag or return stale records during outages. Fail-soft: if the latest record is older than 30 minutes, omit `cosmicWord` for the session rather than producing a word from stale data.
+15. **Daily cron failure handling.** If the `0 0 * * *` rotation handler fails (Worker outage, ANU outage, KV write fails), today's vocab is missing. The Worker falls back to yesterday's vocab and stamps `vocabDate` to yesterday so the episode reflects what was actually used. If both today's and yesterday's are missing (genuinely cold start before any rotation has run), `cosmicWord` is omitted entirely. Open: should we backfill missed days when the cron resumes, or just skip them and carry the previous day forward? Skipping is simpler and the gap is part of the historical record.
 
 ## Later features
 

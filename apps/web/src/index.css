@@ -1,0 +1,34 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    background: #f4efe3;
+    color: #1b1b19;
+  }
+  body {
+    font-family: 'Fraunces', Georgia, serif;
+    font-feature-settings: 'ss01', 'kern';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-variation-settings: 'opsz' 14, 'SOFT' 50;
+  }
+  ::selection {
+    background: #b85a2e;
+    color: #f4efe3;
+  }
+}
+
+@layer utilities {
+  .small-caps {
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.16em;
+  }
+  .display {
+    font-variation-settings: 'opsz' 144, 'SOFT' 30;
+  }
+  .body-serif {
+    font-variation-settings: 'opsz' 14, 'SOFT' 50;
+  }
+}
