@@ -80,6 +80,10 @@ export interface StateVector {
     }>;
     neighborhood?: string;
     city?: string;
+    state?: string;
+    country?: string;
+    countryCode?: string;
+    postcode?: string;
   };
   movement: {
     intensityNormalized: number;

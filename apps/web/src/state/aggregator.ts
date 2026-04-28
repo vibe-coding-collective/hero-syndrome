@@ -14,11 +14,17 @@ export class StateAggregator {
   private geo: GeolocationSensor;
   private timer: number | null = null;
   private running = false;
+  private firstTickResolve: (() => void) | null = null;
+  /** Resolves once the aggregator has produced its first complete StateVector. */
+  readonly firstTick: Promise<void>;
 
   constructor(motion: MotionSensor, geo: GeolocationSensor) {
     this.motion = motion;
     this.geo = geo;
     this.geo.subscribe((r) => this.motion.setGpsSpeed(r.speedMps));
+    this.firstTick = new Promise<void>((resolve) => {
+      this.firstTickResolve = resolve;
+    });
   }
 
   start(): void {
@@ -81,5 +87,9 @@ export class StateAggregator {
     if (cosmic) sv.cosmic = cosmic;
 
     useStore.getState().setStateVector(sv);
+    if (this.firstTickResolve) {
+      this.firstTickResolve();
+      this.firstTickResolve = null;
+    }
   }
 }

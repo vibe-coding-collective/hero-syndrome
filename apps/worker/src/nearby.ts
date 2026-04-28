@@ -17,7 +17,19 @@ interface OverpassResponse {
   elements: OverpassElement[];
 }
 
-const PRIMARY_TAG_KEYS = ['tourism', 'amenity', 'historic', 'leisure', 'natural', 'railway'] as const;
+const PRIMARY_TAG_KEYS = [
+  'tourism',
+  'historic',
+  'amenity',
+  'shop',
+  'leisure',
+  'natural',
+  'railway',
+  'aeroway',
+  'man_made',
+  'office',
+  'craft',
+] as const;
 
 function pickPrimaryTag(tags: Record<string, string>): { category: string; type: string } | null {
   for (const k of PRIMARY_TAG_KEYS) {
@@ -42,17 +54,19 @@ export async function nearbyPois(env: Env, lat: number, lon: number): Promise<Ne
   const cached = await readJsonCache<NearbyRes>(env, key);
   if (cached) return cached;
 
-  const radius = 150;
+  const radius = 500;
   const q = `[out:json][timeout:10];(\n` +
-    `node(around:${radius},${lat},${lon})[tourism];\n` +
-    `node(around:${radius},${lat},${lon})[amenity];\n` +
-    `node(around:${radius},${lat},${lon})[historic];\n` +
-    `node(around:${radius},${lat},${lon})[leisure];\n` +
-    `node(around:${radius},${lat},${lon})[natural~"water|beach"];\n` +
-    `node(around:${radius},${lat},${lon})[railway=station];\n` +
-    `way(around:${radius},${lat},${lon})[tourism];\n` +
-    `way(around:${radius},${lat},${lon})[leisure];\n` +
-    `way(around:${radius},${lat},${lon})[natural~"water|beach"];\n` +
+    `nwr(around:${radius},${lat},${lon})[tourism];\n` +
+    `nwr(around:${radius},${lat},${lon})[historic];\n` +
+    `nwr(around:${radius},${lat},${lon})[amenity];\n` +
+    `nwr(around:${radius},${lat},${lon})[shop];\n` +
+    `nwr(around:${radius},${lat},${lon})[leisure];\n` +
+    `nwr(around:${radius},${lat},${lon})[natural~"water|beach|peak|wood|cliff|cave_entrance"];\n` +
+    `nwr(around:${radius},${lat},${lon})[railway=station];\n` +
+    `nwr(around:${radius},${lat},${lon})[aeroway];\n` +
+    `nwr(around:${radius},${lat},${lon})[man_made~"tower|lighthouse|bridge|pier|windmill|water_tower|silo|monument"];\n` +
+    `nwr(around:${radius},${lat},${lon})[office];\n` +
+    `nwr(around:${radius},${lat},${lon})[craft];\n` +
     `);out center tags;`;
 
   let data: OverpassResponse;
@@ -94,8 +108,14 @@ export async function nearbyPois(env: Env, lat: number, lon: number): Promise<Ne
       distanceM: Math.round(distanceM),
     });
   }
-  items.sort((a, b) => a.distanceM - b.distanceM);
-  const top = items.slice(0, 3);
+  // Prefer named places at the top so "Tate Modern, 80 m" beats "amenity=bench, 12 m"
+  items.sort((a, b) => {
+    const aHasName = a.name ? 0 : 1;
+    const bHasName = b.name ? 0 : 1;
+    if (aHasName !== bHasName) return aHasName - bHasName;
+    return a.distanceM - b.distanceM;
+  });
+  const top = items.slice(0, 5);
   await writeJsonCache(env, key, top, 60 * 60 * 24 * 30);
   return top;
 }

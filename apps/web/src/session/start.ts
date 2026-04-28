@@ -100,8 +100,20 @@ export async function startScene(audioCtx?: AudioContext): Promise<SceneRuntime>
     },
   });
 
-  // Fire generate for song 1 immediately, in parallel with prelude playback.
-  synthesizer.generateNext().catch(() => undefined);
+  // Wait for the aggregator's first complete tick (geocode + weather +
+  // nearby resolved against the latest GPS reading), then fire /generate
+  // for song 1. This avoids song 1 going out with only time + motion while
+  // the rest of the sensors are still warming up. Cap the wait so a slow
+  // upstream doesn't block the session forever.
+  Promise.race([
+    aggregator.firstTick,
+    new Promise<void>((resolve) => window.setTimeout(resolve, 8000)),
+  ]).then(() => synthesizer.generateNext().catch(() => undefined));
+
+  // The cosmic block is fetched in parallel; it's session-frozen so the
+  // request will pick it up if it lands first, and the synthesizer's
+  // watchdog will retry if it doesn't.
+  void synthesizer; // referenced above
 
   // Pick a prelude based on initial intensity / phase.
   let preludePlayed = false;

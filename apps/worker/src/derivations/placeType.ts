@@ -9,6 +9,10 @@ interface NominatimAddress {
   town?: string;
   village?: string;
   hamlet?: string;
+  state?: string;
+  country?: string;
+  country_code?: string;
+  postcode?: string;
 }
 
 export interface NominatimResult {
@@ -44,6 +48,9 @@ export function derivePlaceType(r: NominatimResult): PlaceType {
     if (['motorway', 'trunk', 'primary'].includes(type)) return 'urban';
     if (['residential', 'footway', 'service', 'tertiary', 'secondary'].includes(type)) return 'residential';
   }
+  if (cat === 'place' && (type === 'house' || type === 'farm' || type === 'isolated_dwelling')) return 'residential';
+  if (cat === 'place' && (type === 'city' || type === 'town')) return 'urban';
+  if (cat === 'building') return 'residential';
   return 'unknown';
 }
 
@@ -53,6 +60,10 @@ export function derivePlaceBundle(r: NominatimResult): {
   road?: { class: string; name?: string };
   neighborhood?: string;
   city?: string;
+  state?: string;
+  country?: string;
+  countryCode?: string;
+  postcode?: string;
 } {
   const placeType = derivePlaceType(r);
   const cat = r.class ?? r.category ?? '';
@@ -74,5 +85,9 @@ export function derivePlaceBundle(r: NominatimResult): {
   if (neighborhood) result.neighborhood = neighborhood;
   const city = addr.city ?? addr.town ?? addr.village ?? addr.hamlet;
   if (city) result.city = city;
+  if (addr.state) result.state = addr.state;
+  if (addr.country) result.country = addr.country;
+  if (addr.country_code) result.countryCode = addr.country_code.toUpperCase();
+  if (addr.postcode) result.postcode = addr.postcode;
   return result;
 }

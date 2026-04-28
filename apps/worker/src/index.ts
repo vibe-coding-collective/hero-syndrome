@@ -238,6 +238,18 @@ async function routeRequest(
     });
   }
 
+  // GET /admin/session/:sessionId — full DO state (gated by DEV_TOKEN)
+  m = norm.match(/^\/admin\/session\/([^/]+)$/);
+  if (request.method === 'GET' && m) {
+    if (request.headers.get('x-debug-token') !== env.DEV_TOKEN) {
+      return new Response('unauthorized', { status: 401 });
+    }
+    const sessionId = m[1]!;
+    const id = env.SESSION_DO.idFromName(sessionId);
+    const stub = env.SESSION_DO.get(id);
+    return stub.fetch(`https://session/state?sessionId=${encodeURIComponent(sessionId)}`);
+  }
+
   // GET /admin/cosmic-meta -- exposes the loaded vocab metadata for sanity checks
   if (request.method === 'GET' && norm === '/admin/cosmic-meta') {
     return Response.json(COSMIC_VOCAB_META);

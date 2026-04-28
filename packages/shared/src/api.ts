@@ -56,6 +56,10 @@ export interface GeocodeRes {
   road?: { class: string; name?: string };
   neighborhood?: string;
   city?: string;
+  state?: string;
+  country?: string;
+  countryCode?: string;
+  postcode?: string;
 }
 
 export type NearbyRes = Array<{
