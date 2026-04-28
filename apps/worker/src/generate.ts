@@ -22,6 +22,9 @@ export interface GenerateContext {
   env: Env;
   sessionId: string;
   cosmic?: CosmicSnapshot;
+  /** Rolling list of cosmic words seen this scene, oldest first. Includes
+   *  the current cosmic word at the end so the LLM sees the arc. */
+  cosmicWordHistory?: string[];
   recentTransitionIntent?: ComposeSongResult['metadata']['transitionIntent'];
 }
 
@@ -63,6 +66,7 @@ export async function runGenerate(
       stateVector: req.stateVector,
       stickers: req.stickers,
       cosmic: ctx.cosmic,
+      ...(ctx.cosmicWordHistory ? { cosmicWordHistory: ctx.cosmicWordHistory } : {}),
       quantumBytes: quantum,
       recentHistory: req.recentHistory,
     });
@@ -115,13 +119,19 @@ export async function runGenerate(
     throw err;
   }
 
+  // Bake the per-song cosmic snapshot into the song's stateVector so the
+  // episode page can render which cosmic word landed for which song.
+  const stateVectorForRecord: typeof req.stateVector = ctx.cosmic
+    ? { ...req.stateVector, cosmic: ctx.cosmic }
+    : req.stateVector;
+
   const songRecord: SongRecordPersist = {
     songId,
     startedAt,
     durationSec,
     metadata,
     composition,
-    stateVector: req.stateVector,
+    stateVector: stateVectorForRecord,
     stickers: req.stickers,
     quantumBytes: quantum,
   };

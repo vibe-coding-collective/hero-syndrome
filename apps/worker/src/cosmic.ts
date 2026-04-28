@@ -91,7 +91,12 @@ async function fetchGoesProtonFlux(env: Env): Promise<{ flux: number[]; fetchedA
   }
 }
 
-const COSMIC_CACHE_KEY = (): string => `swpc:${Math.floor(Date.now() / (1000 * 60 * 30))}`;
+// 90 s cache: fresh enough that successive /generate calls in a scene see
+// new flux/wind values (songs are 3-6 min apart) while still rate-limiting
+// NOAA SWPC. Was 30 min when the cosmic block was session-frozen.
+const COSMIC_CACHE_TTL_SECONDS = 90;
+const COSMIC_CACHE_KEY = (): string =>
+  `swpc:${Math.floor(Date.now() / (COSMIC_CACHE_TTL_SECONDS * 1000))}`;
 
 export async function getCosmic(env: Env): Promise<CosmicSnapshot> {
   const cacheKey = COSMIC_CACHE_KEY();
@@ -128,6 +133,6 @@ export async function getCosmic(env: Env): Promise<CosmicSnapshot> {
     cachedAt: new Date().toISOString(),
     cosmic,
   };
-  await writeJsonCache(env, cacheKey, payload, 60 * 30);
+  await writeJsonCache(env, cacheKey, payload, COSMIC_CACHE_TTL_SECONDS);
   return cosmic;
 }

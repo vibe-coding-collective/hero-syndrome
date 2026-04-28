@@ -32,6 +32,10 @@ CURATION RULES (this is a playlist, not a stitched stream):
 - Instrumental only - no lyrics, no vocal lines.
 - Prefer specific over abstract. Cinematic but never obvious. Avoid cliches.
 
+COSMIC INPUTS:
+- The \`cosmic_snapshot\` is refreshed at the moment this song is being composed: \`spaceWeather\` (K-index, solar-wind speed and density) and \`cosmicWord\` (one word distilled from current GOES proton flux, drawn from today's 256-word vocabulary). Treat the word as a directorial *hint* with explicit license to honor, transform, or rebel against; treat space-weather numbers as flavor, not instructions.
+- The \`cosmic_word_arc\` field, when present, lists every cosmic word that has been drawn during this scene so far, oldest first. The last entry is the current word. This is the running through-line of the session: a sparse poem accumulating one word per song. You can echo earlier words, contrast against them, or let them simply hum in the background — you are not required to reuse any of them, but the arc is part of the scene's identity.
+
 RANDOMNESS:
 The \`quantum_bytes\` array is your source of any small stochastic choice. Each byte is uniform on 0..255. Use them in order. When you would otherwise rely on internal randomness - picking a BPM inside a range, choosing a key from several plausible options, deciding which instrument leads, choosing the section count, picking modal flavor - sample from \`quantum_bytes\` instead. Map them to choices via modular arithmetic or threshold tests as appropriate. The bytes are not part of the composition's text. They are the substrate of its small choices. This is a philosophical commitment of the piece. Honor it.`;
 
@@ -103,6 +107,10 @@ export interface ComposeSongInput {
   stateVector: StateVector;
   stickers: Sticker[];
   cosmic?: CosmicSnapshot;
+  /** All cosmic words seen this session, oldest first. The last element is
+   *  the same word that lives in cosmic.cosmicWord — included for arc
+   *  context across the scene. */
+  cosmicWordHistory?: string[];
   quantumBytes: QuantumBytes;
   recentHistory: Array<{
     songId: string;
@@ -197,10 +205,15 @@ export async function composeSong(input: ComposeSongInput): Promise<ComposeSongR
   const userMessage = [
     `State: ${JSON.stringify(input.stateVector)}`,
     `Active stickers: ${JSON.stringify(input.stickers)}`,
-    `Cosmic snapshot: ${JSON.stringify(input.cosmic ?? null)}`,
+    `Cosmic snapshot (refreshed for this song): ${JSON.stringify(input.cosmic ?? null)}`,
+    input.cosmicWordHistory && input.cosmicWordHistory.length > 0
+      ? `Cosmic word arc this scene (oldest first, current word is the last entry): ${JSON.stringify(input.cosmicWordHistory)}`
+      : null,
     `Quantum bytes: ${JSON.stringify(input.quantumBytes.bytes)} (source: ${input.quantumBytes.source})`,
     `Recent history (most recent last): ${JSON.stringify(input.recentHistory)}`,
-  ].join('\n');
+  ]
+    .filter((line): line is string => line !== null)
+    .join('\n');
 
   const requestBody = {
     model: MODEL,
