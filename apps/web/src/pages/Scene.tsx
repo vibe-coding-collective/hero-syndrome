@@ -4,6 +4,7 @@ import { StickerPalette } from '../components/StickerPalette';
 import { StickerOverlay } from '../components/StickerOverlay';
 import { Visualization } from '../components/Visualization';
 import { startScene, clearActiveRuntime } from '../session/start';
+import { AudioEngine } from '../audio/engine';
 import { endScene } from '../session/end';
 import { IdleWatcher } from '../session/idle';
 import { useStore } from '../state/store';
@@ -30,10 +31,15 @@ export default function Scene() {
   }, []);
 
   const beginNow = async (): Promise<void> => {
+    // CRITICAL: build the AudioContext + play a silent buffer SYNCHRONOUSLY
+    // inside the click handler. iOS Safari only unlocks Web Audio if this
+    // happens in the same task as the user gesture; awaiting permissions
+    // first kills the unlock window.
+    const audioCtx = AudioEngine.unlockedContext();
     setStage('starting');
     setError(null);
     try {
-      const runtime = await startScene();
+      const runtime = await startScene(audioCtx);
       setAnalyser(runtime.engine.analyser);
       setStage('live');
       const watcher = new IdleWatcher(() => {

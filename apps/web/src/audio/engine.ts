@@ -36,9 +36,13 @@ export class AudioEngine {
   private leadSec = DEFAULT_LEAD_SEC;
   private tailLoopActive = false;
 
-  constructor(events: AudioEngineEvents = {}) {
-    const Ctor = (window.AudioContext ?? (window as any).webkitAudioContext) as typeof AudioContext;
-    this.ctx = new Ctor();
+  constructor(events: AudioEngineEvents = {}, providedCtx?: AudioContext) {
+    if (providedCtx) {
+      this.ctx = providedCtx;
+    } else {
+      const Ctor = (window.AudioContext ?? (window as any).webkitAudioContext) as typeof AudioContext;
+      this.ctx = new Ctor();
+    }
     this.master = this.ctx.createGain();
     this.master.gain.value = 1;
     this.analyser = this.ctx.createAnalyser();
@@ -47,6 +51,27 @@ export class AudioEngine {
     this.master.connect(this.analyser);
     this.analyser.connect(this.ctx.destination);
     this.events = events;
+  }
+
+  /**
+   * Build an AudioContext + play a brief silent buffer synchronously inside
+   * a user-gesture handler. iOS Safari's autoplay rules require this to
+   * "unlock" Web Audio for the lifetime of the page; without it, fetches
+   * resolve but `decodeAudioData` and source playback hang forever.
+   */
+  static unlockedContext(): AudioContext {
+    const Ctor = (window.AudioContext ?? (window as any).webkitAudioContext) as typeof AudioContext;
+    const ctx = new Ctor();
+    if (ctx.state === 'suspended') {
+      // Fire-and-forget; iOS won't reject within the gesture window.
+      void ctx.resume();
+    }
+    const empty = ctx.createBuffer(1, 1, 22050);
+    const src = ctx.createBufferSource();
+    src.buffer = empty;
+    src.connect(ctx.destination);
+    try { src.start(0); } catch { /* ignore */ }
+    return ctx;
   }
 
   setEvents(events: AudioEngineEvents): void {

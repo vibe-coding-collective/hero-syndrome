@@ -28,7 +28,7 @@ export function getActiveRuntime(): SceneRuntime | null {
   return active;
 }
 
-export async function startScene(): Promise<SceneRuntime> {
+export async function startScene(audioCtx?: AudioContext): Promise<SceneRuntime> {
   const sessionId = ulid();
   const startedAt = Date.now();
   useStore.getState().resetSession();
@@ -57,7 +57,7 @@ export async function startScene(): Promise<SceneRuntime> {
   }
   useStore.getState().setSensors({ permissionsGranted: { motion: motionGranted, geolocation: geoGranted } });
 
-  const engine = new AudioEngine();
+  const engine = new AudioEngine({}, audioCtx);
   const features = new AudioFeatureExtractor(engine.analyser);
   const aggregator = new StateAggregator(motion, geolocation);
   aggregator.start();
