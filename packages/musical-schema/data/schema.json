@@ -1,0 +1,354 @@
+{
+  "version": "v1.2026-05-02",
+  "phase": {
+    "witchingHour": {
+      "tempo": [44, 48, 50, 52, 54, 56],
+      "key": ["A minor (natural)", "D minor", "F♯ minor", "C♯ Phrygian", "B Aeolian", "G minor", "E Phrygian"],
+      "instrumentationBase": [
+        "Sub bass + bowed double bass + tape hiss",
+        "Subharmonic pad + soft choir",
+        "Detuned strings + low drone + felt piano",
+        "Bowed vibraphone + dark pad",
+        "Bass clarinet + analog drone",
+        "Muted French horn + low pad",
+        "Contrabassoon + sustained synth"
+      ]
+    },
+    "night": {
+      "tempo": [52, 56, 60, 64, 66, 68],
+      "key": ["A minor (natural)", "E minor", "D minor", "F♯ minor", "C♯ Phrygian", "G minor", "B Aeolian"],
+      "instrumentationBase": [
+        "Sustained strings + distant piano + soft pad",
+        "Felt piano + low cello drone + airy synth pad",
+        "Solo Rhodes + bowed double bass + tape hiss",
+        "Bowed vibraphone + warm pad + sub bass",
+        "Muted French horn + harp halo + analog pad",
+        "Nylon guitar + sustained synth + breath flute",
+        "Cor anglais + warm strings + sub bass"
+      ]
+    },
+    "dawn": {
+      "tempo": [56, 60, 64, 68, 72, 76],
+      "key": ["A minor → A major (turning)", "D Dorian", "G major", "E minor → E major", "F major", "B♭ Lydian", "C major"],
+      "instrumentationBase": [
+        "Felt piano + soft strings + tape hiss",
+        "Solo violin + warm pad + low brass",
+        "Cor anglais + harp + warm pad",
+        "Bowed cymbal swell + Rhodes + sub bass",
+        "Choir pad rising + nylon guitar + flute",
+        "Soft brass swell + strings + harp",
+        "Glass harmonica + warm strings + airy synth"
+      ]
+    },
+    "morning": {
+      "tempo": [72, 76, 80, 84, 88, 92],
+      "key": ["D major", "G major", "A major", "F major", "C Lydian", "E Mixolydian", "B♭ major"],
+      "instrumentationBase": [
+        "Acoustic guitar + light strings + soft brass",
+        "Upright piano + clarinet + plucked harp",
+        "Nylon guitar + vibraphone + solo flute",
+        "Chamber strings + oboe + light percussion",
+        "Electric piano + soft synth lead + brushed drums",
+        "Solo violin + cello pad + acoustic guitar",
+        "Mandolin + accordion + light woodwinds"
+      ]
+    },
+    "noon": {
+      "tempo": [100, 104, 108, 112, 116, 120],
+      "key": ["G major", "C major", "D major", "A Mixolydian", "F major", "E major", "B♭ Lydian"],
+      "instrumentationBase": [
+        "Full ensemble + acoustic + light synth",
+        "Brass quartet + rhythm section + piano",
+        "String quartet + light percussion + acoustic guitar",
+        "Synth lead + bass + drums + pads",
+        "Woodwind ensemble + Rhodes + walking bass",
+        "Acoustic combo: piano + upright bass + brushed kit",
+        "Orchestral chamber + harpsichord + light strings"
+      ]
+    },
+    "afternoon": {
+      "tempo": [92, 96, 100, 104, 108, 112],
+      "key": ["C major", "F major", "G major", "D Mixolydian", "B♭ major", "A major", "E Lydian"],
+      "instrumentationBase": [
+        "Rhodes + acoustic guitar + walking bass",
+        "Soft horn section + piano + light percussion",
+        "String trio + clarinet + brushed drums",
+        "Vibraphone + nylon guitar + upright bass",
+        "Solo trumpet + piano + warm strings",
+        "Synth pad + acoustic guitar + soft drums",
+        "Chamber ensemble + flute + light strings"
+      ]
+    },
+    "goldenHour": {
+      "tempo": [80, 84, 88, 92, 96, 100],
+      "key": ["D Mixolydian", "A Dorian", "F major", "B♭ Lydian", "E Dorian", "G major", "C Lydian"],
+      "instrumentationBase": [
+        "Warm guitar + electric piano + soft synth pad",
+        "Tenor saxophone + Rhodes + brushed bass",
+        "Cello + classical guitar + ambient pad",
+        "Flugelhorn + felt piano + warm strings",
+        "Bass clarinet + nylon guitar + analog synth",
+        "Muted trumpet + double bass + soft drums",
+        "Alto flute + harp + warm strings"
+      ]
+    },
+    "dusk": {
+      "tempo": [72, 76, 80, 84, 88, 92],
+      "key": ["E Dorian", "A Dorian", "D Mixolydian", "F♯ minor", "C♯ minor", "B minor", "G Mixolydian"],
+      "instrumentationBase": [
+        "Warm pad + electric piano + soft drums",
+        "Cor anglais + cello + ambient pad",
+        "Soft synth bass + nylon guitar + brushed kit",
+        "Alto flute + harp + warm strings",
+        "Bowed vibraphone + Rhodes + sub bass",
+        "Felt piano + low strings + tape hiss",
+        "Bass clarinet + soft synth + felt piano"
+      ]
+    }
+  },
+  "dayOfWeek": {
+    "Mon": {
+      "dayAccent": [
+        "Choir pad — soft, hovering",
+        "Distant vocal \"ah\" — wordless",
+        "Bowed vibraphone — silvery, slow",
+        "Sustained celesta — cool, lit",
+        "Glass harmonica — translucent",
+        "Soft synth pad with slow LFO — gently pulsing",
+        "Boys' choir — pale, suspended"
+      ]
+    },
+    "Tue": {
+      "dayAccent": [
+        "Brass accent — assertive, forward",
+        "French horn line — declarative",
+        "Timpani roll into accent",
+        "Trumpet stab — bright, decisive",
+        "Trombone slide — bold, muscular",
+        "Snare ruff + cymbal — drilled, ready",
+        "Low brass cluster — gritty, forceful"
+      ]
+    },
+    "Wed": {
+      "dayAccent": [
+        "Solo strings — communicative, agile",
+        "Pizzicato violin runs — quick, witty",
+        "Solo flute filigree — darting",
+        "Marimba flurries — chattering",
+        "Solo clarinet line — conversational",
+        "Glockenspiel sparkles — quicksilver",
+        "Plucked koto figures — agile, bright"
+      ]
+    },
+    "Thu": {
+      "dayAccent": [
+        "Organ — expansive, weighty",
+        "Full string-section swell — generous",
+        "Tubular bells — broad",
+        "Hammond B3 sustained — warm authority",
+        "Brass chorale — noble, grand",
+        "Pipe organ pedal point — vast",
+        "Low choir + organ blend — solemn breadth"
+      ]
+    },
+    "Fri": {
+      "dayAccent": [
+        "Harp — light, social",
+        "Acoustic guitar arpeggio — easygoing",
+        "Solo flute + harp duet — flirtatious",
+        "Vibraphone shimmer — convivial",
+        "Mandolin tremolo — lilting",
+        "Plucked Celtic harp — graceful",
+        "Music-box motif — gentle charm"
+      ]
+    },
+    "Sat": {
+      "dayAccent": [
+        "Low bass strings — grounded, no urgency",
+        "Contrabassoon held tone — heavy, slow",
+        "Tuba sustained — leaden, settled",
+        "Bass drone synth — earthen",
+        "Cello in low register — patient, weighted",
+        "Bass marimba pulse — measured",
+        "Subharmonic pad — geological"
+      ]
+    },
+    "Sun": {
+      "dayAccent": [
+        "Orchestral swell — full, resolved",
+        "Brass + strings unison — radiant",
+        "Full choir \"ah\" — luminous",
+        "Pipe organ tutti — golden",
+        "Trumpet + horn unison — bright halo",
+        "Wide string chorale — open, completed",
+        "Bell + strings — proclamatory"
+      ]
+    }
+  },
+  "condition": {
+    "clear": {
+      "reverb": ["Small chamber + air", "Warm hall", "Tape echo with long decay", "Medium plate", "Convolution of an empty hall", "Soft spring reverb", "Cathedral with HF rolloff"],
+      "dynamics": ["mp steady", "mf with subtle taper", "mp with slight crescendo", "mp throughout, no swell", "mp → mf and back", "pp crescendo to mp", "mf even, unhurried"],
+      "color": ["Bright pad halo", "Acoustic guitar resonance", "Soft glockenspiel sparkle", "Sustained string shimmer", "Gentle high pad", "Plucked harp accents", "Light vibraphone halo"]
+    },
+    "mainly-clear": {
+      "reverb": ["Small chamber", "Warm hall short", "Plate medium", "Soft spring", "Convolution of porch space", "Tape with light flutter", "Wood room"],
+      "dynamics": ["mp steady", "mp with light taper", "mp → mf and back", "mp throughout", "mf relaxed", "mp pulsing gently", "pp → mp easy"],
+      "color": ["Soft string halo", "Felt piano resonance", "Light flute air", "Subtle vibraphone", "Plucked guitar overtones", "Bright pad with rolloff", "Distant horn halo"]
+    },
+    "overcast": {
+      "reverb": ["Long warm hall", "Cathedral with HF rolloff", "Wet plate", "Damped chamber", "Long convolution + soft tail", "Slow spring", "Cloth-damped room"],
+      "dynamics": ["mp held, no crescendo", "pp throughout", "mp slightly darker", "mp without taper", "pp → mp very gently", "mp dim", "mp pillowy"],
+      "color": ["Low pad shadow", "Felt piano with damper", "Cello drone", "Bass clarinet wash", "Soft synth pad cloud", "Tape hiss bed", "Sustained warm strings"]
+    },
+    "fog": {
+      "reverb": ["Cathedral with HF rolloff", "Long convolution + felt damping", "Wet plate", "Cloth-damped chamber", "Tape with extreme low-pass", "Wide hall + low-pass", "Underwater convolution"],
+      "dynamics": ["pp throughout", "pp very held", "ppp → pp", "pp in deep stillness", "pp without articulation", "pp barely audible swell", "pp diffuse"],
+      "color": ["Sustained low pad", "Bowed cello drone", "Sub bass swell", "Bass clarinet hum", "Soft choir pad", "Felt piano sus pedal", "Air-only flute breath"]
+    },
+    "drizzle": {
+      "reverb": ["Soft plate", "Small chamber + light air", "Tape with subtle wow", "Spring with short decay", "Medium hall damped", "Wood-room reverb", "Convolution of a porch"],
+      "dynamics": ["mp gently pulsing", "mp with light articulation", "pp → mp soft", "mp uneven, natural", "mp damped", "mp threaded", "mp filtered"],
+      "color": ["Light pizzicato pulses", "Soft vibraphone droplets", "Marimba pattering", "Felt piano staccato", "Plucked harp arpeggios", "Light glockenspiel taps", "Brushed cymbal patter"]
+    },
+    "freezing-drizzle": {
+      "reverb": ["Bright cold plate", "Glassy chamber", "Tape with hiss", "Short bright reverb", "Cold convolution", "Spring tight", "Wide cold air"],
+      "dynamics": ["pp brittle", "mp glassy", "pp → mp tinged", "mp held with cold edge", "pp crystalline", "mp icy steady", "pp suspended"],
+      "color": ["Glass harmonica points", "Crystal bell taps", "Cold synth pad", "Bowed crotales", "Detuned glockenspiel", "Sine-wave high pings", "Tubular bell points"]
+    },
+    "rain": {
+      "reverb": ["Long warm hall", "Tape with longer decay", "Plate with depth", "Cathedral damped", "Convolution of overhang", "Wet spring", "Wide chamber + air"],
+      "dynamics": ["mp with steady pattering", "mp held under pulse", "mp → mf gentle build", "mp continuous", "mp with surface motion", "mp rolling under", "mp diffuse"],
+      "color": ["Filtered noise bed", "Pizzicato cluster", "Marimba rolls", "Brushed snare patter", "Felt piano repeated notes", "Soft synth pulse", "Tabla-like soft taps"]
+    },
+    "freezing-rain": {
+      "reverb": ["Cold plate medium", "Glassy hall", "Tape with sleet hiss", "Bright spring", "Short cold reverb", "Convolution of icy porch", "Tight cold chamber"],
+      "dynamics": ["mp brittle pulse", "mp with edge", "pp → mp pinched", "mp glassy steady", "mp held + iced", "mp clicking subtly", "pp ringing"],
+      "color": ["Crystal bell pulse", "Cold synth ping", "Detuned music box", "Bowed metal", "Glass percussion", "High piano with damper", "Glockenspiel + filtered noise"]
+    },
+    "rain-showers": {
+      "reverb": ["Plate with light air", "Short hall", "Tape with intermittent flutter", "Spring + air", "Convolution + wet damping", "Wide room with rolloff", "Soft chamber + bright tail"],
+      "dynamics": ["mp surging gently", "mp → mf and back", "mp uneven, natural", "mp pulsing in waves", "pp → mp → pp", "mp building briefly", "mp threaded with gusts"],
+      "color": ["Soft pizzicato bursts", "Felt piano patter + rest", "Vibraphone droplets", "Brushed kit + soft cymbal", "Marimba arpeggios", "Light synth pulse", "Plucked guitar bursts"]
+    },
+    "snow": {
+      "reverb": ["Long warm hall", "Tape with HF rolloff", "Cathedral damped", "Cloth-damped chamber", "Convolution of snow-blanketed space", "Wet plate", "Wide soft hall"],
+      "dynamics": ["pp throughout", "pp very held", "ppp → pp soft", "pp dim and quiet", "pp pillowed", "pp suspended", "pp slowly breathing"],
+      "color": ["Sustained warm strings", "Felt piano sus pedal", "Choir pad", "Bass clarinet hum", "Soft synth bed", "Bowed vibraphone", "Cor anglais drone"]
+    },
+    "snow-grains": {
+      "reverb": ["Tape with light hiss", "Plate with subtle high noise", "Spring damped", "Soft chamber + powder", "Convolution of muffled outdoor", "Wet plate + light hiss", "Cathedral with rolloff"],
+      "dynamics": ["pp tessitura with grain", "pp with soft noise bed", "pp → mp very small", "pp with surface texture", "pp held + grain", "pp filtered", "pp threaded"],
+      "color": ["Filtered white-noise bed", "Brushed snare grain", "Soft glockenspiel taps", "Light filtered hiss + pad", "Granular synth", "Sine pings + air", "Bowed vibraphone with bow noise"]
+    },
+    "snow-showers": {
+      "reverb": ["Wet plate", "Cathedral damped", "Tape with HF rolloff", "Wide soft hall", "Convolution of outdoor + flurry", "Cloth-damped chamber", "Spring damped"],
+      "dynamics": ["pp with soft surges", "pp → mp wave", "pp held with light pulse", "pp building briefly", "pp uneven, natural", "pp pillowed and breathing", "pp threaded with gusts"],
+      "color": ["Soft choir pad", "Bowed vibraphone bursts", "Felt piano repeated soft notes", "Bass clarinet + flute drone", "Sustained low pad", "Brushed cymbal swell", "Plucked harp soft pulses"]
+    },
+    "thunderstorm": {
+      "reverb": ["Cathedral with rumble", "Long deep hall", "Plate with rumble bed", "Tape echo + sub thump", "Convolution of distant thunder", "Spring with low growl", "Wide hall + sub"],
+      "dynamics": ["mp under rumble", "mp → ff sudden accent", "mp held with deep low", "mp with intermittent f", "mp with sub pulses", "mp swelling unevenly", "mp + ff thunder accents"],
+      "color": ["Sub-bass swells", "Low timpani rolls", "Distant brass clusters", "Bowed contrabass tremolo", "Detuned low piano", "Synth bass pulse", "Bass drone + low choir"]
+    },
+    "thunderstorm-hail": {
+      "reverb": ["Cathedral with rumble + sleet noise", "Long deep hall + ice clatter", "Plate with rumble + hiss", "Tape + crackle layer", "Convolution of metal awning", "Spring + cold high noise", "Wide hall + ice"],
+      "dynamics": ["mp under rumble + sharp hits", "mp → ff abrupt", "mp with sharp irregular accents", "mp + ff stabs", "mp surging + crackle", "mp held + percussive bursts", "mf piercing accents"],
+      "color": ["Sub bass + glockenspiel taps", "Timpani + crotales", "Low strings + woodblock", "Contrabass + ride bell", "Synth bass + glass percussion", "Low brass + tubular bells", "Detuned low piano + high cluster"]
+    }
+  },
+  "tempC": {
+    "thresholds": { "coldMax": 5, "coolMax": 15, "mildMax": 22, "warmMax": 28 },
+    "buckets": {
+      "cold": { "tonalWarmth": ["Cold cello drone — bowed long", "Glass harmonica — clear, brittle", "Bass clarinet — dark and dry", "Sub bass + filtered noise", "Detuned synth pad — chilled", "Bowed crotales — icy points", "Solo cor anglais — austere"] },
+      "cool": { "tonalWarmth": ["Felt piano + warm pad blended cool", "Muted trumpet — cool but warmed", "Cor anglais + soft strings", "Vibraphone with slow tremolo", "Soft choir pad — pale", "Plucked harp — clean", "Soft synth pad — neutral light"] },
+      "mild": { "tonalWarmth": ["Acoustic guitar resonance", "Nylon guitar + soft strings", "Felt piano — even", "Vibraphone — relaxed", "Soft brass halo", "Light flute air", "Warm pad — neutral"] },
+      "warm": { "tonalWarmth": ["Rhodes + warm strings", "Tenor saxophone — round", "Acoustic guitar + warm pad", "Flugelhorn — warm bronze", "Warm synth pad — analog", "Cor anglais — golden", "Soft horn section — round"] },
+      "hot": { "tonalWarmth": ["Hammond organ — saturated", "Brass section — bright + warm", "Tenor sax + electric piano — burnished", "Distorted warm pad", "Solo trumpet — warm vibrato", "Wide warm strings", "Synth pad — saturated analog"] }
+    }
+  },
+  "humidityPct": {
+    "thresholds": { "dryMax": 40, "moderateMax": 65 },
+    "buckets": {
+      "dry": { "airDensity": ["Sparse texture, lots of air", "Few voices, tight stereo", "Open mid range with silence", "Dry articulation, no reverb tail", "Bone-dry plate — close mic", "Solo voice over thin pad", "Spacious arrangement, breathing rests"] },
+      "moderate": { "airDensity": ["Normal texture, balanced air", "Standard reverb tail", "Mid-density arrangement", "Even stereo field", "Layered but breathing", "Moderate sustain", "Balanced wet/dry"] },
+      "humid": { "airDensity": ["Thick texture, heavy air", "Layered pads + sustained voices", "Wet reverb tails", "Saturated stereo field", "Reverberant low end", "Densely overlapping voices", "Heavy sustain pedal feel"] }
+    }
+  },
+  "precipitationMmHr": {
+    "thresholds": { "lightMax": 2, "moderateMax": 7 },
+    "buckets": {
+      "none": { "textureOverlay": ["None — clear surface", "Faint pad bed only", "Soft sine drone", "Tape hiss — minimal", "Sustained string air", "Soft choir suspension", "No texture overlay"] },
+      "light": { "textureOverlay": ["Soft pizzicato patter", "Felt piano repeated notes", "Marimba droplets", "Brushed cymbal grain", "Vibraphone soft pulses", "Light synth pulse — even", "Plucked harp arpeggios"] },
+      "moderate": { "textureOverlay": ["Filtered noise bed — steady", "Pizzicato cluster — rolling", "Marimba rolls", "Brushed snare pattern", "Soft synth pulse — denser", "Felt piano repeated chords", "Tabla-like soft tapping"] },
+      "heavy": { "textureOverlay": ["Wide filtered noise bed", "Low timpani rolls", "Bowed contrabass tremolo", "Distorted low pulse", "Sub-bass surges", "Synth bass + noise layer", "Choir pad + low rumble"] }
+    }
+  },
+  "cloudCoverPct": {
+    "thresholds": { "clearMax": 25, "partialMax": 75 },
+    "buckets": {
+      "clear": { "brightnessMask": ["Bright pad halo", "High glockenspiel sparkle", "Sustained high strings", "Light vibraphone shimmer", "Crystal bell points", "Bright synth pad", "Plucked harp high accents"] },
+      "partial": { "brightnessMask": ["Soft pad with rolloff", "Mid-range string halo", "Light flute air", "Felt piano resonance", "Vibraphone — neutral", "Soft synth pad", "Cor anglais halo"] },
+      "overcast": { "brightnessMask": ["Low pad shadow", "Bass clarinet wash", "Cello drone", "Felt piano with damper", "Tape hiss bed", "Sustained warm strings", "Soft synth pad cloud"] }
+    }
+  },
+  "windMps": {
+    "thresholds": { "calmMax": 2, "breezyMax": 7, "windyMax": 14 },
+    "buckets": {
+      "calm": { "motionModulation": ["Static voicing — no movement", "Sustained held chord", "Slow LFO on pad — barely audible", "No tremolo", "Stationary stereo image", "Held string section", "Dronelike pad"] },
+      "breezy": { "motionModulation": ["Gentle tremolo on strings", "Slow LFO on pad — drift", "Soft side-to-side stereo motion", "Felt piano with light release", "Vibraphone slow tremolo", "Bowed vibraphone gentle drift", "Cor anglais soft vibrato"] },
+      "windy": { "motionModulation": ["Wider tremolo on strings", "Faster pad LFO — visible motion", "Stereo movement — left/right sweep", "Brushed cymbal swells", "Synth pad with filter sweep", "Vibraphone wide tremolo", "Pitched air gusts in flute"] },
+      "gale": { "motionModulation": ["Aggressive tremolo", "Fast LFO sweeps", "Wide stereo motion + delays", "Cymbal swells + crashes", "Pitch-shifted noise gusts", "Filter automations big", "Brass swells with vibrato"] }
+    }
+  },
+  "isDay": {
+    "true": { "lighting": ["High-register voicing", "Bright timbres prioritized", "Sparse, lit arrangement", "Daylight EQ — open mids and highs", "Acoustic instruments forward", "Ride cymbal sparkle", "High strings + flute layer"] },
+    "false": { "lighting": ["Low-register voicing", "Dark timbres prioritized", "Dense, shadowed arrangement", "Nighttime EQ — rolled-off highs", "Synth pads forward", "Bowed bass + brushed kit", "Felt piano + sub bass layer"] }
+  },
+  "thresholdProximity": {
+    "windowMinutes": 30,
+    "buckets": {
+      "nearSunrise": { "thresholdAccent": ["Slow choir swell rising — pp → mp", "Solo cor anglais ascending phrase", "Bowed cymbal swell — crescendo", "Pad opening from low to high register", "Soft brass swell — crescendo", "Glockenspiel + harp ascending arpeggio", "Light strings ascending in fifths"] },
+      "nearSunset": { "thresholdAccent": ["Slow choir swell descending — mp → pp", "Solo cor anglais descending phrase", "Bowed vibraphone fade", "Pad closing from high to low register", "Soft brass swell — diminuendo", "Glockenspiel + harp descending arpeggio", "Warm strings descending in fifths"] }
+    }
+  },
+  "activity": {
+    "still": {
+      "tempoAdjustment": [-20, -18, -16, -14, -12, -10],
+      "articulation": ["Legato, fully sustained", "Molto legato", "Tenuto throughout", "Sostenuto", "Smooth, held", "Unbroken legato", "Legatissimo"]
+    },
+    "walking": {
+      "tempoAdjustment": [-2, -1, 0, 1, 2, 0],
+      "articulation": ["Light staccato, natural", "Détaché", "Portato", "Gentle staccato", "Mezzo staccato", "Lightly articulated", "Natural separation"]
+    },
+    "running": {
+      "tempoAdjustment": [20, 22, 24, 26, 28, 30],
+      "articulation": ["Marcato, accented", "Staccatissimo", "Sforzando per beat", "Accented détaché", "Pesante", "Martellato", "Accented marcato"]
+    },
+    "vehicle": {
+      "tempoAdjustment": [6, 8, 10, 12, 14, 9],
+      "articulation": ["Smooth, continuous", "Legato glide", "Tenuto, continuous", "Sostenuto, smooth", "Non-articulated flow", "Cantabile", "Connected legato"]
+    }
+  },
+  "motion": {
+    "still": { "phraseShape": ["Long sustained phrases — no rhythmic emphasis", "Drone-like flat phrases", "Slow-moving block harmonies", "Pad-only melodic motion", "Unrhythmic suspension", "Held chord with slow inner motion", "No rhythmic figure — pure tone"] },
+    "steady": { "phraseShape": ["Even regular phrasing — predictable cadence", "Walking phrases — measured", "Ostinato-style consistency", "Pulsed quarter-note phrases", "Even half-note phrases", "Steady eighth-note motion", "Lightly syncopated but predictable"] },
+    "rhythmic": { "phraseShape": ["Strong rhythmic ostinato", "Cross-rhythm patterns — interlocking", "Polyrhythmic layers — 3 against 2", "Driving syncopated patterns", "Rhythmic hocket between voices", "Pulsing cyclic patterns", "Compound meter feel"] },
+    "erratic": { "phraseShape": ["Broken phrasing — sudden stops", "Irregular rhythmic groupings — odd meters", "Fragmented melodic lines", "Jittery cross-rhythms", "Asymmetric phrase lengths", "Polyrhythmic conflict", "Rubato with sharp dynamic shifts"] }
+  },
+  "intensity": {
+    "low": { "dynamicRange": ["Quiet throughout — pp to mp range", "Narrow dynamic range — flat at p", "Sparse arrangement — few voices at once", "Long sustained quiet phrases", "Whisper-quiet ambient feel", "pp dynamics throughout", "ppp suspension"] },
+    "moderate": { "dynamicRange": ["Mid-range dynamic span — mp to mf", "Balanced expressive range", "Standard ensemble density", "mp baseline with mf highlights", "Comfortable mid dynamic level", "mp throughout with light swells", "mf relaxed"] },
+    "high": { "dynamicRange": ["Wide dynamic range — pp to ff", "Dense arrangement, all voices active", "Strong expressive contrasts", "Dramatic crescendos", "ff peaks frequent", "Energetic and forward", "Loud, full ensemble at mf to ff"] }
+  },
+  "tempoTerms": [
+    { "min": 0, "max": 45, "term": "Grave" },
+    { "min": 45, "max": 60, "term": "Lento" },
+    { "min": 60, "max": 66, "term": "Larghetto" },
+    { "min": 66, "max": 76, "term": "Adagio" },
+    { "min": 76, "max": 108, "term": "Andante" },
+    { "min": 108, "max": 120, "term": "Moderato" },
+    { "min": 120, "max": 156, "term": "Allegro" },
+    { "min": 156, "max": 999, "term": "Vivace" }
+  ]
+}

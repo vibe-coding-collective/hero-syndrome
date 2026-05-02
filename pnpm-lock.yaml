@@ -34,6 +34,28 @@ importers:
         specifier: ^5.6.3
         version: 5.9.3
 
+  apps/material-force-vocab-gen:
+    dependencies:
+      '@hero-syndrome/llm':
+        specifier: workspace:*
+        version: link:../../packages/llm
+      '@hero-syndrome/material-force-vocab':
+        specifier: workspace:*
+        version: link:../../packages/material-force-vocab
+      '@hero-syndrome/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.19.17
+      tsx:
+        specifier: ^4.19.2
+        version: 4.21.0
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+
   apps/prelude-gen:
     dependencies:
       '@hero-syndrome/llm':
@@ -110,6 +132,12 @@ importers:
       '@hero-syndrome/llm':
         specifier: workspace:*
         version: link:../../packages/llm
+      '@hero-syndrome/material-force-vocab':
+        specifier: workspace:*
+        version: link:../../packages/material-force-vocab
+      '@hero-syndrome/musical-schema':
+        specifier: workspace:*
+        version: link:../../packages/musical-schema
       '@hero-syndrome/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -134,6 +162,22 @@ importers:
         version: 5.9.3
 
   packages/llm:
+    dependencies:
+      '@hero-syndrome/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+
+  packages/material-force-vocab:
+    devDependencies:
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+
+  packages/musical-schema:
     dependencies:
       '@hero-syndrome/shared':
         specifier: workspace:*

@@ -1,0 +1,24 @@
+{
+  "name": "material-force-vocab-gen",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "gen": "tsx src/index.ts",
+    "gen:sources": "tsx src/sourceAll.ts",
+    "gen:embed": "tsx src/computeEmbeddings.ts",
+    "gen:projection": "tsx src/generateProjection.ts",
+    "gen:stats": "tsx src/computeSpaceWeatherStats.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hero-syndrome/llm": "workspace:*",
+    "@hero-syndrome/material-force-vocab": "workspace:*",
+    "@hero-syndrome/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}

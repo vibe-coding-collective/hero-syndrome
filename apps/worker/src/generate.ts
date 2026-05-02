@@ -3,28 +3,30 @@ import type {
   CosmicSnapshot,
   GenerateReq,
   GenerateRes,
+  MusicalPicks,
+  PhraseOfTheMoment,
   StateVector,
   Sticker,
 } from '@hero-syndrome/shared';
 import {
   composeSong,
   AnthropicError,
+  buildClaudePromptJson,
   renderCompositionWithRetry,
   ElevenLabsError,
   ruleTableComposition,
   type ComposeSongResult,
 } from '@hero-syndrome/llm';
+import { composeDirectorialBlock, makePicks } from '@hero-syndrome/musical-schema';
 import type { Env } from './types';
 import { pullQuantumBytes } from './quantumDO';
 import { sessionSongKey } from './r2';
+import { derivePhraseOfTheMoment } from './cosmic/phraseOfTheMoment';
 
 export interface GenerateContext {
   env: Env;
   sessionId: string;
   cosmic?: CosmicSnapshot;
-  /** Rolling list of cosmic words seen this scene, oldest first. Includes
-   *  the current cosmic word at the end so the LLM sees the arc. */
-  cosmicWordHistory?: string[];
   recentTransitionIntent?: ComposeSongResult['metadata']['transitionIntent'];
 }
 
@@ -46,13 +48,17 @@ export interface SongRecordPersist {
   stateVector: StateVector;
   stickers: Sticker[];
   quantumBytes: { bytes: number[]; source: 'qrng' | 'mixed' | 'pseudo' };
+  phraseOfTheMoment?: PhraseOfTheMoment;
+  musicalPicks?: MusicalPicks;
 }
 
 export async function runGenerate(
   ctx: GenerateContext,
   req: GenerateReq,
 ): Promise<GenerateResult> {
-  const quantum = await pullQuantumBytes(ctx.env, 16);
+  // 32 bytes per song: bytes 0..4 → phraseOfTheMoment, bytes 5..22 → musical
+  // schema picks (max 18), bytes 23..31 → reserved headroom.
+  const quantum = await pullQuantumBytes(ctx.env, 32);
 
   let composeResult: ComposeSongResult | null = null;
   let composition: ComposeSongResult['composition'];
@@ -60,15 +66,31 @@ export async function runGenerate(
   let llmLatencyMs: number | undefined;
   let llmTokens: { input: number; output: number } | undefined;
 
+  const phraseOfTheMoment = ctx.cosmic?.spaceWeather
+    ? derivePhraseOfTheMoment({
+        spaceWeather: ctx.cosmic.spaceWeather,
+        quantumBytes: quantum.bytes.slice(0, 5),
+      })
+    : null;
+
+  const promptJson = buildClaudePromptJson({
+    stateVector: req.stateVector,
+    stickers: req.stickers,
+    vibes: {
+      ...(ctx.cosmic?.cosmicWord?.word ? { wordOfTheMoment: ctx.cosmic.cosmicWord.word } : {}),
+      ...(phraseOfTheMoment ? { phraseOfTheMoment: phraseOfTheMoment.phrase } : {}),
+    },
+    recentHistory: req.recentHistory,
+  });
+
+  const musicalPicks = makePicks({ state: promptJson.state, bytes: quantum.bytes.slice(5) });
+  const directorialBlock = composeDirectorialBlock(musicalPicks);
+
   try {
     composeResult = await composeSong({
       apiKey: ctx.env.ANTHROPIC_API_KEY,
-      stateVector: req.stateVector,
-      stickers: req.stickers,
-      cosmic: ctx.cosmic,
-      ...(ctx.cosmicWordHistory ? { cosmicWordHistory: ctx.cosmicWordHistory } : {}),
-      quantumBytes: quantum,
-      recentHistory: req.recentHistory,
+      promptJson,
+      directorialBlock,
     });
     metadata = composeResult.metadata;
     composition = composeResult.composition;
@@ -134,6 +156,8 @@ export async function runGenerate(
     stateVector: stateVectorForRecord,
     stickers: req.stickers,
     quantumBytes: quantum,
+    musicalPicks,
+    ...(phraseOfTheMoment ? { phraseOfTheMoment } : {}),
   };
 
   const response: GenerateRes = {

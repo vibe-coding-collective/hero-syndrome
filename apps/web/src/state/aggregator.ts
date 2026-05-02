@@ -70,6 +70,7 @@ export class StateAggregator {
         if (geocode.road) sv.location.road = geocode.road;
         if (geocode.neighborhood) sv.location.neighborhood = geocode.neighborhood;
         if (geocode.city) sv.location.city = geocode.city;
+        if (geocode.country) sv.location.country = geocode.country;
       } catch { /* fail-soft */ }
 
       try {

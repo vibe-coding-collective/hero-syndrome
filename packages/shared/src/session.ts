@@ -1,5 +1,12 @@
 import type { CosmicSnapshot, StateVector, Sticker } from './state';
-import type { Composition, MeasuredFeatures, QuantumBytes, SongMetadata } from './song';
+import type {
+  Composition,
+  MeasuredFeatures,
+  PhraseOfTheMoment,
+  QuantumBytes,
+  SongMetadata,
+} from './song';
+import type { MusicalPicks } from './musicalPicks';
 
 export interface SongRecord {
   songId: string;
@@ -11,6 +18,8 @@ export interface SongRecord {
   stateVector: StateVector;
   stickers: Sticker[];
   quantumBytes: QuantumBytes;
+  phraseOfTheMoment?: PhraseOfTheMoment;
+  musicalPicks?: MusicalPicks;
 }
 
 export interface SessionRecord {

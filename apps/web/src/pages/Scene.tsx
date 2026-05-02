@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { StickerPalette } from '../components/StickerPalette';
 import { StickerOverlay } from '../components/StickerOverlay';
 import { Visualization } from '../components/Visualization';
+import SourcesFootnotes from '../components/SourcesFootnotes';
 import { startScene, clearActiveRuntime } from '../session/start';
 import { AudioEngine } from '../audio/engine';
 import { endScene } from '../session/end';
@@ -16,6 +17,7 @@ export default function Scene() {
   const [stage, setStage] = useState<Stage>('permission');
   const [error, setError] = useState<string | null>(null);
   const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
+  const [sourcesOpen, setSourcesOpen] = useState(false);
   const idleRef = useRef<IdleWatcher | null>(null);
   const sessionId = useStore((s) => s.sessionId);
   const songs = useStore((s) => s.songs);
@@ -85,14 +87,24 @@ export default function Scene() {
         <div className="font-mono text-[10px] small-caps text-ink/65">
           {sessionId ? `Scene · ${sessionId.slice(-6)}` : 'Scene'}
         </div>
-        <button
-          type="button"
-          onClick={onEnd}
-          disabled={stage === 'ending'}
-          className="rounded-full border border-ink/30 bg-paper/70 px-4 py-1.5 font-mono text-[11px] small-caps text-ink/85 backdrop-blur transition hover:bg-paper disabled:opacity-50"
-        >
-          {stage === 'ending' ? 'closing…' : 'End scene'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setSourcesOpen(true)}
+            className="rounded-full border border-ink/30 bg-paper/70 px-3 py-1.5 font-mono text-[10px] small-caps text-ink/65 backdrop-blur transition hover:bg-paper"
+            aria-label="Open sources"
+          >
+            Sources
+          </button>
+          <button
+            type="button"
+            onClick={onEnd}
+            disabled={stage === 'ending'}
+            className="rounded-full border border-ink/30 bg-paper/70 px-4 py-1.5 font-mono text-[11px] small-caps text-ink/85 backdrop-blur transition hover:bg-paper disabled:opacity-50"
+          >
+            {stage === 'ending' ? 'closing…' : 'End scene'}
+          </button>
+        </div>
       </header>
 
       <main className="absolute inset-0">
@@ -111,6 +123,27 @@ export default function Scene() {
       />
 
       <StickerPalette />
+
+      {sourcesOpen ? (
+        <div
+          className="fixed inset-0 z-50 overflow-y-auto bg-paper/95 backdrop-blur"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="mx-auto max-w-3xl px-6 py-12">
+            <div className="flex items-center justify-end mb-6">
+              <button
+                type="button"
+                onClick={() => setSourcesOpen(false)}
+                className="rounded-full border border-ink/30 bg-paper px-4 py-1.5 font-mono text-[11px] small-caps text-ink/85 transition hover:bg-paper-deep/40"
+              >
+                Close
+              </button>
+            </div>
+            <SourcesFootnotes variant="compact" />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

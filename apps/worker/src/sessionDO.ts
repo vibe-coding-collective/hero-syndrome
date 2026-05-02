@@ -105,9 +105,7 @@ export class SessionDO {
 
     // Per-song fresh cosmic. The session-level s.cosmic stays as the FIRST
     // snapshot (used for episode title flavoring). Each song additionally
-    // records its own cosmic block, and we accumulate the cosmic words as a
-    // rolling history capped at 10 so the LLM sees the arc of words across
-    // the scene.
+    // records its own cosmic block via the per-song stateVector.
     let perSongCosmic: SessionDoState['cosmic'] | undefined;
     try {
       perSongCosmic = await getCosmic(this.env);
@@ -120,13 +118,6 @@ export class SessionDO {
       this.appendDebug(s, 'cosmic.firstFrozen', perSongCosmic);
     }
 
-    const wordHistory = s.cosmicWordHistory ?? [];
-    if (perSongCosmic?.cosmicWord?.word) {
-      wordHistory.push(perSongCosmic.cosmicWord.word);
-      if (wordHistory.length > 10) wordHistory.shift();
-    }
-    s.cosmicWordHistory = wordHistory;
-
     const body = (await request.json()) as GenerateReq;
     const lastSong = s.songs[s.songs.length - 1];
     try {
@@ -135,7 +126,6 @@ export class SessionDO {
           env: this.env,
           sessionId,
           ...(perSongCosmic ? { cosmic: perSongCosmic } : {}),
-          ...(wordHistory.length > 0 ? { cosmicWordHistory: [...wordHistory] } : {}),
           ...(lastSong ? { recentTransitionIntent: lastSong.metadata.transitionIntent } : {}),
         },
         body,

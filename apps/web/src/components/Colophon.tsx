@@ -26,6 +26,7 @@ export default function Colophon() {
                 <li>A sequence of full songs, played back to back.</li>
                 <li>Drawn from quantum vacuum, by commitment.</li>
                 <li>Stamped with a cosmic word, by particle flux.</li>
+                <li>Etched with a phrase from open texts, by space weather.</li>
                 <li>A single shareable URL per episode.</li>
                 <li>iOS-first, browser-everywhere.</li>
                 <li>Free to listen, while it is.</li>
@@ -52,9 +53,13 @@ export default function Colophon() {
             <br />
             Audio by ElevenLabs Music. Direction by Claude Haiku.
             <br />
-            Quantum bytes from ANU. Pseudo fallback named on the page.
+            Quantum bytes from the Australian National University&rsquo;s QRNG. Pseudo fallback named on the page.
             <br />
             Cosmic word from GOES proton flux, projected into the day&rsquo;s vocabulary, redrawn at midnight UTC.
+            <br />
+            Phrase of the moment from open texts, projected with current NOAA space weather.
+            <br />
+            Source attribution: see docs/data-sources.md in the repository.
             <br />
             No newsletter, no analytics, no cookies.
           </div>

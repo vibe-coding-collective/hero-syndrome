@@ -12,6 +12,7 @@
     "deploy:web": "pnpm --filter web build && wrangler pages deploy apps/web/dist --project-name hero-syndrome",
     "typecheck": "pnpm -r typecheck",
     "cosmic-vocab:gen": "pnpm --filter cosmic-vocab-gen run gen",
+    "material-force-vocab:gen": "pnpm --filter material-force-vocab-gen run gen",
     "preludes:gen": "pnpm --filter prelude-gen run gen"
   },
   "devDependencies": {

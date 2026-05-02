@@ -1,43 +1,34 @@
 import type {
+  ClaudePromptJson,
   Composition,
   SongMetadata,
-  StateVector,
-  Sticker,
-  CosmicSnapshot,
-  QuantumBytes,
-  MeasuredFeatures,
 } from '@hero-syndrome/shared';
 
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-haiku-4-5';
 const ANTHROPIC_VERSION = '2023-06-01';
 
-const COMPOSE_SYSTEM_PROMPT = `You are the music director for a film of this person's life. You program the score one song at a time, reading the current state of the person's world, any emoji "mood stickers" they've placed, and the recent few songs already in the playlist. Each song is a complete piece (~3-6 min) composed from a sequence of sections.
+const COMPOSE_SYSTEM_PROMPT = `You are composing a film score for this person's life, one song at a time, by calling the \`compose_song\` tool exactly once per turn.
 
-You must call the \`compose_song\` tool exactly once. Its input has two parts:
+Each user message has two sections separated by Markdown headers:
 
-  metadata:    a label of the song's musical character (BPM range, key, intensity, instrumentation, genre tags, transitionIntent). This is for downstream continuity; ElevenLabs never sees it.
+1. **\`# Musical scaffolding\`** — the deterministic musical picks (tempo, key, instrumentation base, day accent, weather-driven timbres, reverb, dynamics, articulation, phrase shape, threshold accents) chosen for this song from a quantum-driven schema. One line per element. Honor every line. Treat the scaffolding as a constellation, not a recipe — you choose section count, transitions, intros/outros, modal flavoring within the chosen key, and the dynamic arc within the dynamic range.
 
-  composition: the structured plan sent verbatim to ElevenLabs Music as its composition_plan. Contains an overallPrompt and 1-30 sections (each 3-120 s, summing to 3 s-10 min total). Each section has a label, durationSec, and a section-level prompt. Section prompts MUST explicitly embed the metadata values - state BPM (or narrow range), key/mode, lead instrumentation, and intensity descriptor in the prose. Metadata and section prompts must agree.
+2. **\`# Present moment\`** — a JSON object describing the world state right now. Use it to color prose and intent, never to override the scaffolding.
 
-CURATION RULES (this is a playlist, not a stitched stream):
-- Use \`recentHistory\` (last 3 songs' metadata + measuredFeatures) as your curation context. measuredFeatures is what the rendered audio actually sounded like - trust it more than metadata when they disagree.
-- Each song must have its own character - do not repeat prior compositions or metadata values verbatim. Vary key, instrumentation, and structure.
-- Pick \`transitionIntent\` based on how state and stickers have changed:
-    continue - same vibe, slight variation (sustained context, no sticker)
-    evolve   - related, moving forward thematically (gradual state drift)
-    shift    - intentional pivot to a new mood (significant state change)
-    break    - hard contrast (fresh sticker spike, or major state change like motionClass: still -> running, or weather: clear -> storm)
-- Songs are full compositions: design intentional intros and outros so back-to-back playback feels like a curated set, not a hard cut.
-- Instrumental only - no lyrics, no vocal lines.
-- Prefer specific over abstract. Cinematic but never obvious. Avoid cliches.
+The JSON object's keys:
+- \`state\`: \`time\`, \`body\` (activity, motion, intensity), \`location\` (\`placeType\` bucket, \`place.type\` raw OSM kind, \`place.name\` proper name when one exists, \`city\`, \`country\`, \`nearby\` points of interest), and \`weather\`.
+- \`userInput\`: direct inputs the listener has placed on the score (currently always empty).
+- \`vibes\`: distillations of the moment.
+  - \`wordOfTheMoment\`: a single word drawn today from particle-radiation flux, projected into a daily-rotated vocabulary.
+  - \`phraseOfTheMoment\`: a two-part phrase (a material and a force, e.g. "humming copper wire") drawn from open texts and conditioned on current space weather.
+- \`recentHistory\`: the previous few songs as \`{ metadata, measuredFeatures? }\`. \`measuredFeatures\` reflects what the audio actually sounded like; trust it over \`metadata\` when they disagree.
 
-COSMIC INPUTS:
-- The \`cosmic_snapshot\` is refreshed at the moment this song is being composed: \`spaceWeather\` (K-index, solar-wind speed and density) and \`cosmicWord\` (one word distilled from current GOES proton flux, drawn from today's 256-word vocabulary). Treat the word as a directorial *hint* with explicit license to honor, transform, or rebel against; treat space-weather numbers as flavor, not instructions.
-- The \`cosmic_word_arc\` field, when present, lists every cosmic word that has been drawn during this scene so far, oldest first. The last entry is the current word. This is the running through-line of the session: a sparse poem accumulating one word per song. You can echo earlier words, contrast against them, or let them simply hum in the background — you are not required to reuse any of them, but the arc is part of the scene's identity.
+The \`compose_song\` tool returns:
+- \`metadata\`: BPM range, key, intensity, instrumentation, genre tags, and \`transitionIntent\` (\`continue\` | \`evolve\` | \`shift\` | \`break\`). For downstream continuity; the music engine never sees it.
+- \`composition\`: the plan sent verbatim to the music engine. An \`overallPrompt\` and 1–30 sections (each 3–120 s, summing to 3 s–10 min). Section prompts must explicitly embed the metadata values — BPM (or a narrow range), key/mode, lead instrumentation, and intensity descriptor — so metadata and section prompts agree.
 
-RANDOMNESS:
-The \`quantum_bytes\` array is your source of any small stochastic choice. Each byte is uniform on 0..255. Use them in order. When you would otherwise rely on internal randomness - picking a BPM inside a range, choosing a key from several plausible options, deciding which instrument leads, choosing the section count, picking modal flavor - sample from \`quantum_bytes\` instead. Map them to choices via modular arithmetic or threshold tests as appropriate. The bytes are not part of the composition's text. They are the substrate of its small choices. This is a philosophical commitment of the piece. Honor it.`;
+Instrumental only — no lyrics, no vocal lines.`;
 
 const COMPOSE_TOOL = {
   name: 'compose_song',
@@ -104,19 +95,14 @@ const COMPOSE_TOOL = {
 
 export interface ComposeSongInput {
   apiKey: string;
-  stateVector: StateVector;
-  stickers: Sticker[];
-  cosmic?: CosmicSnapshot;
-  /** All cosmic words seen this session, oldest first. The last element is
-   *  the same word that lives in cosmic.cosmicWord — included for arc
-   *  context across the scene. */
-  cosmicWordHistory?: string[];
-  quantumBytes: QuantumBytes;
-  recentHistory: Array<{
-    songId: string;
-    metadata: SongMetadata;
-    measuredFeatures?: MeasuredFeatures;
-  }>;
+  /** Pre-built JSON to embed verbatim in the user message. Built by
+   *  `buildClaudePromptJson` from the raw state, cosmic snapshot, and
+   *  recent history. */
+  promptJson: ClaudePromptJson;
+  /** Optional directorial block — paragraph prose that lists the
+   *  quantum-driven musical-schema picks for this song. Appended after the
+   *  JSON in the user message. */
+  directorialBlock?: string;
 }
 
 export interface ComposeSongResult {
@@ -202,18 +188,10 @@ function validateComposeSongInput(value: unknown): asserts value is { metadata: 
 }
 
 export async function composeSong(input: ComposeSongInput): Promise<ComposeSongResult> {
-  const userMessage = [
-    `State: ${JSON.stringify(input.stateVector)}`,
-    `Active stickers: ${JSON.stringify(input.stickers)}`,
-    `Cosmic snapshot (refreshed for this song): ${JSON.stringify(input.cosmic ?? null)}`,
-    input.cosmicWordHistory && input.cosmicWordHistory.length > 0
-      ? `Cosmic word arc this scene (oldest first, current word is the last entry): ${JSON.stringify(input.cosmicWordHistory)}`
-      : null,
-    `Quantum bytes: ${JSON.stringify(input.quantumBytes.bytes)} (source: ${input.quantumBytes.source})`,
-    `Recent history (most recent last): ${JSON.stringify(input.recentHistory)}`,
-  ]
-    .filter((line): line is string => line !== null)
-    .join('\n');
+  const jsonPart = JSON.stringify(input.promptJson, null, 2);
+  const userMessage = input.directorialBlock
+    ? `${input.directorialBlock}\n\n# Present moment\n\n${jsonPart}`
+    : jsonPart;
 
   const requestBody = {
     model: MODEL,
