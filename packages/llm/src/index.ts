@@ -6,6 +6,9 @@ export {
 } from './anthropic';
 export type { ComposeSongInput, ComposeSongResult, TitleInput, EvocativenessBatchInput } from './anthropic';
 
+export { buildClaudePromptJson } from './transform';
+export type { BuildPromptInput } from './transform';
+
 export {
   renderComposition,
   renderCompositionWithRetry,

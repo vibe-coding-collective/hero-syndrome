@@ -31,8 +31,6 @@ export interface SessionDoState extends SessionRecord {
   lastGenerateTs?: number;
   finalized: boolean;
   debugLog: DebugLogEvent[];
-  /** Rolling list of cosmic words derived per /generate, oldest first, capped at 10. */
-  cosmicWordHistory?: string[];
 }
 
 export interface CosmicCachedAggregate {

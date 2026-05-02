@@ -20,7 +20,7 @@ const PANELS: Panel[] = [
     heading: 'The world is read.',
     body: 'Time, weather, motion, the kind of place around you, and any moods you\u2019ve dropped on the score are gathered every few seconds into a small portrait of right now.',
     annotation:
-      'fig. iv · state vector, sampled at 5s. Earth’s K-index frozen at session start.',
+      'fig. iv · state vector, sampled at 5s. Space weather refreshed per song.',
     diagram: 'signals',
   },
   {

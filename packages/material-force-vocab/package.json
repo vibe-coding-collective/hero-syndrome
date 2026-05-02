@@ -1,0 +1,26 @@
+{
+  "name": "@hero-syndrome/material-force-vocab",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./material-pool.json": "./data/material-pool.json",
+    "./material-pool-embeddings.json": "./data/material-pool-embeddings.json",
+    "./force-pool.json": "./data/force-pool.json",
+    "./force-pool-embeddings.json": "./data/force-pool-embeddings.json",
+    "./projection.json": "./data/projection.json",
+    "./spaceweather-stats.json": "./data/spaceweather-stats.json"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}

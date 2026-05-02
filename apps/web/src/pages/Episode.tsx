@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import type { EpisodeRes } from '@hero-syndrome/shared';
 import { api, episodeSongStreamUrl } from '../api/client';
 import { AudioEngine } from '../audio/engine';
+import SourcesFootnotes from '../components/SourcesFootnotes';
 
 export default function Episode() {
   const { id } = useParams<{ id: string }>();
@@ -163,6 +164,11 @@ export default function Episode() {
                 <div className="basis-full font-serif italic text-[14px] text-ink/70">
                   {song.metadata.instrumentation.join(', ')}
                 </div>
+                {song.phraseOfTheMoment ? (
+                  <div className="basis-full font-serif italic text-[13px] text-ink/60">
+                    phrase: {song.phraseOfTheMoment.phrase}
+                  </div>
+                ) : null}
                 {song.stickers.length > 0 ? (
                   <div className="basis-full font-mono text-[12px] text-ink/65">
                     stickers: {song.stickers.map((s) => s.emoji).join(' ')}
@@ -172,6 +178,8 @@ export default function Episode() {
             ))}
           </ol>
         </section>
+
+        <SourcesFootnotes />
       </main>
     </div>
   );
