@@ -1,0 +1,67 @@
+**Context-Aware Generative Music App**
+
+This app listens to the world around you and turns it into music. It reads signals from your phone — the time of day, weather outside, how you're moving — and uses them to generate a short instrumental piece that reflects your current moment. Every session is different, even in the same place, because a random quantum seed ensures no two people hear the same result. You can nudge the output by changing your activity state or swapping your location type, but the core environmental data is always pulled automatically.
+
+**Phrase of the moment** — a two-word poetic phrase (noun + gerund) generated each session, like "sintering obsidian" or "fulling esker." Words are drawn from archaic sources — minerals, medieval trade texts, alchemy manuscripts, 19th century cookbooks — and sampled using current space weather data as a bias. Passed to Claude as mood flavour, not a hard musical constraint. Claude decides how to interpret it in the composition prose.
+
+---
+
+**What the app reads automatically (not modifiable)**
+
+| Input | What it affects |
+|---|---|
+| `time.phase` | Tempo, key/mode, instrumentation base |
+| `time.dayOfWeek` | Instrumentation base (accent voice) |
+| `weather.condition` | Reverb, dynamics, timbre |
+| `weather.tempC` | Tonal warmth |
+| `weather.sunriseProximityMin / sunsetProximityMin` | Instrumentation base, dynamics |
+
+**What the user can change**
+
+| Input | What it affects |
+|---|---|
+| `body.activity` | Tempo, articulation |
+| `location.type` | Timbre, tonal warmth, phrase shape |
+| Tempo override | Tempo |
+
+---
+
+**Input parameter ranges**
+
+`time.phase` — 8 values: witching hour (02–05), night (21–02), dawn (05–07), morning (07–11), noon (11–13), afternoon (13–16), golden hour (16–19), dusk (19–21).
+
+`time.dayOfWeek` — 7 values: Monday through Sunday, each mapped to a distinct accent instrument family.
+
+`weather.condition` — 14 values: clear, mainly-clear, overcast, fog, drizzle, freezing drizzle, rain, freezing rain, rain showers, thunderstorm, thunderstorm with hail, snow, snow grains, snow showers.
+
+`weather.tempC` — continuous, bucketed into 5: cold (below 5°C), cool (5–14°C), mild (15–22°C), warm (23–28°C), hot (above 28°C).
+
+`weather.sunriseProximityMin / sunsetProximityMin` — fires only when within 30 minutes of either event; otherwise inactive. Both can overlap (rare).
+
+`body.activity` — 4 values: still, walking, running, vehicle.
+
+`location.type` — open-ended POI categories: cinema, theatre, park, café, transit hub, museum, residential, unknown. User can swap to any nearby type.
+
+`Tempo override` — 5 relative options applied on top of the generated base: Much slower (−30 BPM), Slower (−15 BPM), As generated (0), Faster (+15 BPM), Much faster (+30 BPM).
+
+---
+
+**Musical output ranges**
+
+**Tempo** — 44 to 176 BPM. Base set by time phase (44–120 BPM), adjusted by body activity (−20 to +30 BPM) and tempo override (−30 to +30 BPM). Maps to classical terms: Grave → Vivace.
+
+**Key / mode** — major, minor, and modal (Dorian, Phrygian, Mixolydian, Lydian, Aeolian). Nighttime phases favour minor and modal; daytime phases favour major.
+
+**Instrumentation base** — changes by phase and day. Ranges from solo felt piano + drone (witching hour) to full chamber ensemble (noon). Day accent adds one instrument layer on top.
+
+**Reverb** — dry close-mic to cathedral with deep tail. Weather condition is the main driver: clear weather = small chamber; fog or snow = cathedral with HF rolloff.
+
+**Dynamics** — ppp (near-inaudible) to ff (full ensemble). Driven by weather condition and body intensity.
+
+**Timbre / tonal warmth** — cold: glass harmonica, bass clarinet. Hot: Hammond organ, brass section. Warm: Rhodes, flugelhorn, tenor sax.
+
+**Texture overlay** — none (clear conditions) up to wide filtered noise bed + low timpani rolls (heavy precipitation).
+
+**Articulation** — legatissimo (still) through marcato and staccatissimo (running).
+
+**Phrase shape** — long sustained drones (still) through polyrhythmic conflict and broken phrasing (erratic motion).
