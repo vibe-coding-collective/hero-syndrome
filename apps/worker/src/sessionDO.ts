@@ -13,6 +13,7 @@ import { getCosmic } from './cosmic';
 import type { DebugLogEvent, Env, SessionDoState } from './types';
 
 const RATE_LIMIT_MS = 10_000;
+const MAX_SONGS_PER_SESSION = 10;
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const DEBUG_LOG_CAP = 200;
 
@@ -92,6 +93,9 @@ export class SessionDO {
     let s = await this.loadState(sessionId);
     if (!s) return new Response('no session', { status: 404 });
     if (s.finalized) return new Response('finalized', { status: 409 });
+    if (s.songs.length >= MAX_SONGS_PER_SESSION) {
+      return new Response('session song limit reached', { status: 429 });
+    }
 
     const now = Date.now();
     if (s.lastGenerateTs && now - s.lastGenerateTs < RATE_LIMIT_MS) {
@@ -152,6 +156,9 @@ export class SessionDO {
       await this.ensureAlarm();
       return Response.json(result.response satisfies GenerateRes);
     } catch (err) {
+      const errStr = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+      const errDetail = (err as any)?.status ? `[${(err as any).status}] ${(err as any)?.body ?? ''}` : '';
+      console.error(JSON.stringify({ event: 'generate.error', sessionId, error: errStr, detail: errDetail }));
       this.appendDebug(s, 'generate.error', String(err));
       // Don't keep the rate-limit penalty when we failed.
       delete s.lastGenerateTs;
