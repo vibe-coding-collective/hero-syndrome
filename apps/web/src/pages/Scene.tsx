@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { StickerPalette } from '../components/StickerPalette';
-import { StickerOverlay } from '../components/StickerOverlay';
 import { Visualization } from '../components/Visualization';
 import SourcesFootnotes from '../components/SourcesFootnotes';
 import { startScene, clearActiveRuntime } from '../session/start';
@@ -109,20 +107,17 @@ export default function Scene() {
 
       <main className="absolute inset-0">
         <Visualization analyser={analyser} />
-        <StickerOverlay />
       </main>
 
       <SceneStatus
         isPlaying={isPlaying}
         songsCount={songs.length}
         latencyMs={generationLatencyEMA}
-        place={stateVector?.location?.placeType ?? null}
+        place={stateVector?.location?.place?.type ?? null}
         condition={stateVector?.weather?.condition ?? null}
         phase={stateVector?.time?.phase ?? null}
         intensity={stateVector?.movement?.intensityNormalized ?? null}
       />
-
-      <StickerPalette />
 
       {sourcesOpen ? (
         <div

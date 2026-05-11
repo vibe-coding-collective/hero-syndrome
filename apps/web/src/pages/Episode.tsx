@@ -95,6 +95,8 @@ export default function Episode() {
     );
   }
 
+  const headerPhrase = data.songs[0]?.phraseOfTheMoment?.phrase;
+
   return (
     <div className="min-h-screen bg-paper text-ink">
       <header className="border-b border-ink/15">
@@ -105,7 +107,7 @@ export default function Episode() {
           </h1>
           <p className="mt-3 font-mono text-[10px] small-caps text-ink/55">
             {new Date(data.startedAt).toLocaleString()} → {data.endedAt ? new Date(data.endedAt).toLocaleString() : '—'}
-            {data.cosmic?.cosmicWord ? ` · cosmic word: ${data.cosmic.cosmicWord.word}` : ''}
+            {headerPhrase ? ` · phrase: ${headerPhrase}` : ''}
             {` · quantum receipt: ${data.quantumReceipt.totalBytesConsumed} bytes / ${data.quantumReceipt.source}`}
           </p>
         </div>
@@ -159,7 +161,7 @@ export default function Episode() {
                   {song.metadata.bpmRange[0]}–{song.metadata.bpmRange[1]} bpm
                 </span>
                 <span className="font-mono text-[10px] small-caps text-ink/55">
-                  {song.stateVector.time.phase} · {song.stateVector.location?.placeType ?? '—'} · {song.stateVector.weather?.condition ?? '—'}
+                  {song.stateVector.time.phase} · {song.locationType ?? '—'} · {song.stateVector.weather?.condition ?? '—'}
                 </span>
                 <div className="basis-full font-serif italic text-[14px] text-ink/70">
                   {song.metadata.instrumentation.join(', ')}
@@ -167,11 +169,6 @@ export default function Episode() {
                 {song.phraseOfTheMoment ? (
                   <div className="basis-full font-serif italic text-[13px] text-ink/60">
                     phrase: {song.phraseOfTheMoment.phrase}
-                  </div>
-                ) : null}
-                {song.stickers.length > 0 ? (
-                  <div className="basis-full font-mono text-[12px] text-ink/65">
-                    stickers: {song.stickers.map((s) => s.emoji).join(' ')}
                   </div>
                 ) : null}
               </li>

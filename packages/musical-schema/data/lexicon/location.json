@@ -1,0 +1,300 @@
+{
+  "home_interior": [
+    "domestic close walls",
+    "night-time apartment quiet",
+    "thin floor ceiling intimacy",
+    "personal small-room presence"
+  ],
+  "home_garden": [
+    "bounded backyard sky",
+    "fence-line distant city",
+    "soft outdoor close-mic feel",
+    "afternoon wind in shrubs implied"
+  ],
+  "office": [
+    "low ceiling acoustic flatness",
+    "fluorescent room hush",
+    "midrange-forward dry tail",
+    "background HVAC hum implied"
+  ],
+  "co_working_space": [
+    "open plan keyboard scale",
+    "warm midrange chatter off-mic",
+    "shared room sense of mid-distance",
+    "soft typing pulse implied"
+  ],
+  "factory_or_warehouse": [
+    "vast metallic reverberant hall",
+    "low-end industrial drone bed",
+    "distant machinery resonance",
+    "high-bay long reflection tail"
+  ],
+  "construction_site": [
+    "outdoor hard-surface impact scale",
+    "intermittent distant transients",
+    "concrete and steel reflections",
+    "open-air with low-frequency rumble"
+  ],
+  "retail_shop": [
+    "small enclosed midrange presence",
+    "tight room with soft surface damping",
+    "register-clack scale implied",
+    "intimate commercial-room air"
+  ],
+  "shopping_mall": [
+    "polished concourse reverb",
+    "anonymous crowd-mass at distance",
+    "glass and tile glossy reflections",
+    "indoor large-public-space tail"
+  ],
+  "supermarket": [
+    "fluorescent acoustic flatness",
+    "refrigeration low-frequency hum implied",
+    "hard-surface midrange reflections",
+    "aisle-scale open room"
+  ],
+  "outdoor_market": [
+    "open-air bounded by stall fabric",
+    "layered crowd presence off-mic",
+    "awning-damped midrange",
+    "mixed scale of voices and motion implied"
+  ],
+  "cafe": [
+    "small room chatter implied off-mic",
+    "warm midrange intimacy",
+    "espresso machine hiss scale"
+  ],
+  "restaurant": [
+    "warm dining-room midrange",
+    "plate and glass clatter scale implied",
+    "sit-down ambient mid-distance",
+    "soft diner mass without voices"
+  ],
+  "bar_or_pub": [
+    "low ceiling dim acoustic",
+    "drinks-noise mid-distance",
+    "wood and brick room tone",
+    "intimate evening close-mic feel"
+  ],
+  "nightclub": [
+    "sub-bass pressure room",
+    "dense reverberant dance space",
+    "high-end shimmer with neon abstraction",
+    "wide stereo mixed perspective"
+  ],
+  "fast_food": [
+    "tile and plastic bright reflections",
+    "fluorescent flat hush",
+    "quick transient clatter implied",
+    "high midrange forward air"
+  ],
+  "food_truck_or_street_food": [
+    "immediate outdoor close presence",
+    "metal-cart resonance scale",
+    "street backdrop at mid-distance",
+    "open-air with cooking transients implied"
+  ],
+  "train_station": [
+    "large reverberant concourse",
+    "steel and glass long tail",
+    "anonymous mass scale without voices",
+    "platform announcement architecture implied"
+  ],
+  "bus_station": [
+    "concrete platform reflections",
+    "diesel low-frequency rumble implied",
+    "queue-scale mid-distance crowd",
+    "outdoor canopy partial damping"
+  ],
+  "airport": [
+    "vast polished hall reverb",
+    "smooth glass long reflection tail",
+    "anonymous-mass quiet murmur",
+    "high ceiling sense of scale"
+  ],
+  "subway_or_metro": [
+    "tile tunnel slap-back reflections",
+    "mechanical wind and rumble bed",
+    "claustrophobic narrow stereo",
+    "concrete underground reverb"
+  ],
+  "tunnel_or_underpass": [
+    "long narrow concrete reverb",
+    "passing motion-blurred resonance",
+    "low-frequency loaded close space",
+    "echo-tail with directional flutter"
+  ],
+  "on_foot_street": [
+    "open-air with side-wall reflections",
+    "city ambient bed at mid-distance",
+    "traffic wash implied",
+    "pedestrian-scale close presence"
+  ],
+  "highway_or_motorway": [
+    "wind-pressure cabin bed",
+    "doppler-suggested passing motion",
+    "vehicle wash low-frequency drone",
+    "open road wide stereo"
+  ],
+  "parking_lot_or_garage": [
+    "concrete slab low-ceiling echo",
+    "hollow column reflections",
+    "engine-bay low rumble implied",
+    "fluorescent enclosed quiet"
+  ],
+  "park_urban": [
+    "small open green space",
+    "soft city bed at distance",
+    "tree-line damped sky",
+    "pocket-scale mid-distance hush"
+  ],
+  "park_large_natural": [
+    "open sky and trees",
+    "distant city as quiet bed",
+    "wind and birdscale space"
+  ],
+  "forest_or_woods": [
+    "close trunk reflections",
+    "canopy vertical absorption",
+    "leaf-rustle scale bed implied",
+    "damped near-field intimacy"
+  ],
+  "mountain_or_hills": [
+    "wide vertical reverb tail",
+    "thin air high clarity",
+    "distant valley wind bed",
+    "elevated open sense of scale"
+  ],
+  "beach_or_coast": [
+    "horizon-wide open reverb",
+    "wave-pulse low-frequency bed implied",
+    "salt-air spaciousness",
+    "no surface reflections seaward"
+  ],
+  "river_or_lake": [
+    "semi-open water-side reflection",
+    "midrange damping over water",
+    "shore-bank mid-distance",
+    "still water ambient bed implied"
+  ],
+  "ocean_or_open_water": [
+    "vast horizon no-reflection space",
+    "wind and swell bed implied",
+    "infinite open stereo",
+    "boat-deck mid-distance perspective"
+  ],
+  "desert_or_arid_land": [
+    "dry no-reverb flat expanse",
+    "heat-shimmer abstract bed",
+    "vast open with hard ground reflections",
+    "minimal vegetation damping"
+  ],
+  "field_or_meadow": [
+    "low-ceiling sky openness",
+    "grass-bed rustle implied",
+    "horizon-bound mid-distance",
+    "agricultural quiet bed"
+  ],
+  "cave_or_underground": [
+    "deep cavernous reverb",
+    "low-frequency drone resonance",
+    "water-drip pinpoint scale",
+    "absorbed-quiet between phrases"
+  ],
+  "museum_or_gallery": [
+    "white cube quiet",
+    "respectful low dynamics",
+    "footstep-scale silence between phrases"
+  ],
+  "library": [
+    "soft hush absorbed by shelves",
+    "page-rustle scale implied",
+    "midrange dampened intimacy",
+    "study-room near-field perspective"
+  ],
+  "theatre_or_cinema": [
+    "darkened hall hush",
+    "wide screen stereo image",
+    "proscenium depth and stage distance",
+    "subdued dynamic range until climax"
+  ],
+  "concert_venue": [
+    "live hall early reflections",
+    "audience-pressure implied",
+    "stage-distance mid perspective",
+    "warm-room performance scale"
+  ],
+  "stadium_or_arena": [
+    "vast outdoor-indoor wide stereo",
+    "crowd-roar bed implied",
+    "long reverberant tail",
+    "anonymous-mass scale"
+  ],
+  "gym_or_fitness": [
+    "hard-surface mid reflections",
+    "equipment clank scale implied",
+    "energetic high-midrange air",
+    "echo-tile bright room tone"
+  ],
+  "school_or_university": [
+    "institutional corridor reverb",
+    "linoleum mid-distance",
+    "classroom-scale mid air",
+    "campus-quiet between bells"
+  ],
+  "hospital_or_clinic": [
+    "sterile bright midrange air",
+    "fluorescent hush",
+    "soft-footstep absorbed presence",
+    "clinical near-field clarity"
+  ],
+  "place_of_worship": [
+    "long sacred reverb tail",
+    "vertical ceiling resonance",
+    "candle-quiet hush between phrases",
+    "stone and wood warm absorption"
+  ],
+  "government_building": [
+    "formal marble-hall reverb",
+    "hard-surface bureaucratic mid",
+    "long corridor reflection tail",
+    "polished civic quiet"
+  ],
+  "historic_site": [
+    "weathered stone resonance",
+    "time-thick absorbed quiet",
+    "old-architecture irregular reflections",
+    "monumental sense of scale"
+  ],
+  "plaza_or_public_square": [
+    "open urban bounded by facades",
+    "mid-distance crowd bed",
+    "stone-square reflection tail",
+    "civic-scale openness"
+  ],
+  "rooftop": [
+    "open sky with surface beneath",
+    "wind-exposed midrange clarity",
+    "city-glow ambient bed",
+    "elevated stereo perspective"
+  ],
+  "alleyway_or_back_street": [
+    "narrow tall-wall slap reflections",
+    "intimate narrow stereo",
+    "wet pavement reverb implied",
+    "hidden-passage close presence"
+  ],
+  "rural_settlement": [
+    "small open with distant nature bed",
+    "quiet far horizon",
+    "village-scale mid-distance hush",
+    "soft sky overhead absorption"
+  ],
+  "wilderness_or_remote": [
+    "vast no-human silence",
+    "wind-only ambient bed",
+    "infinite quiet stereo",
+    "uninterrupted natural reverb"
+  ],
+  "unknown": ["neutral unspecified place", "no strong architectural cue"]
+}

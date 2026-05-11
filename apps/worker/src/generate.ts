@@ -1,15 +1,18 @@
 import { ulid } from 'ulid';
 import type {
+  BodyActivity,
   CosmicSnapshot,
   GenerateReq,
   GenerateRes,
-  MusicalPicks,
+  LocationType,
   PhraseOfTheMoment,
+  RenderPlan,
+  StackedMeta,
   StateVector,
-  Sticker,
 } from '@hero-syndrome/shared';
 import {
   composeSong,
+  classifyLocation,
   AnthropicError,
   buildClaudePromptJson,
   renderCompositionWithRetry,
@@ -17,7 +20,11 @@ import {
   ruleTableComposition,
   type ComposeSongResult,
 } from '@hero-syndrome/llm';
-import { composeDirectorialBlock, makePicks } from '@hero-syndrome/musical-schema';
+import {
+  buildLexiconContext,
+  metaToPlan,
+  moonPhaseForDate,
+} from '@hero-syndrome/musical-schema';
 import type { Env } from './types';
 import { pullQuantumBytes } from './quantumDO';
 import { sessionSongKey } from './r2';
@@ -34,6 +41,7 @@ export interface GenerateResult {
   response: GenerateRes;
   songRecord: SongRecordPersist;
   llmLatencyMs?: number;
+  classifyLocationLatencyMs?: number;
   musicLatencyMs: number;
   llmTokens?: { input: number; output: number };
   preludeFallback: boolean;
@@ -46,25 +54,30 @@ export interface SongRecordPersist {
   metadata: ComposeSongResult['metadata'];
   composition: ComposeSongResult['composition'];
   stateVector: StateVector;
-  stickers: Sticker[];
   quantumBytes: { bytes: number[]; source: 'qrng' | 'mixed' | 'pseudo' };
   phraseOfTheMoment?: PhraseOfTheMoment;
-  musicalPicks?: MusicalPicks;
+  stacked?: StackedMeta;
+  renderPlan?: RenderPlan;
+  locationType?: LocationType;
+  bodyActivity?: BodyActivity;
+}
+
+/** Pick top-K mood tags above a weight threshold. */
+function topMoodTags(mood: Record<string, number>, k = 6, threshold = 0.1): string[] {
+  return Object.entries(mood)
+    .filter(([, w]) => w >= threshold)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, k)
+    .map(([tag]) => tag);
 }
 
 export async function runGenerate(
   ctx: GenerateContext,
   req: GenerateReq,
 ): Promise<GenerateResult> {
-  // 32 bytes per song: bytes 0..4 → phraseOfTheMoment, bytes 5..22 → musical
-  // schema picks (max 18), bytes 23..31 → reserved headroom.
+  // 32 bytes per song: bytes 0..4 → phraseOfTheMoment, bytes 5..22 → seed
+  // for stacked-meta stochasticity if we ever need it, 23..31 → headroom.
   const quantum = await pullQuantumBytes(ctx.env, 32);
-
-  let composeResult: ComposeSongResult | null = null;
-  let composition: ComposeSongResult['composition'];
-  let metadata: ComposeSongResult['metadata'];
-  let llmLatencyMs: number | undefined;
-  let llmTokens: { input: number; output: number } | undefined;
 
   const phraseOfTheMoment = ctx.cosmic?.spaceWeather
     ? derivePhraseOfTheMoment({
@@ -73,24 +86,92 @@ export async function runGenerate(
       })
     : null;
 
+  // Classify location (1-of-50) if we have reverse-geocode hints. Falls back
+  // to 'unknown' on classification failure or missing inputs.
+  let locationType: LocationType = 'unknown';
+  let classifyLocationLatencyMs: number | undefined;
+  if (req.stateVector.location?.place || req.stateVector.location?.road || req.stateVector.location?.city) {
+    try {
+      const cls = await classifyLocation({
+        apiKey: ctx.env.ANTHROPIC_API_KEY,
+        geocode: {
+          ...(req.stateVector.location.place ? { place: req.stateVector.location.place } : {}),
+          ...(req.stateVector.location.road ? { road: req.stateVector.location.road } : {}),
+          ...(req.stateVector.location.neighborhood
+            ? { neighborhood: req.stateVector.location.neighborhood }
+            : {}),
+          ...(req.stateVector.location.city ? { city: req.stateVector.location.city } : {}),
+          ...(req.stateVector.location.state ? { state: req.stateVector.location.state } : {}),
+          ...(req.stateVector.location.country ? { country: req.stateVector.location.country } : {}),
+        },
+        ...(req.stateVector.location.nearby ? { nearby: req.stateVector.location.nearby } : {}),
+      });
+      locationType = cls.locationType;
+      classifyLocationLatencyMs = cls.latencyMs;
+    } catch (err) {
+      console.log(JSON.stringify({
+        ts: new Date().toISOString(),
+        sessionId: ctx.sessionId,
+        event: 'classifyLocation.error',
+        reason: String(err),
+      }));
+    }
+  }
+
+  // Run the musical-schema pipeline.
+  const moonPhase = moonPhaseForDate(new Date());
+  const bodyActivity: BodyActivity =
+    req.stateVector.location?.bodyActivity ?? 'still';
+  const seed = `${ctx.sessionId}:${quantum.bytes.slice(0, 8).join('-')}`;
+  const { stacked, renderPlan } = metaToPlan(
+    {
+      timePhase: req.stateVector.time.phase,
+      dayOfWeek: req.stateVector.time.dayOfWeek,
+      weatherCondition: req.stateVector.weather?.condition ?? 'mainly_clear',
+      moonPhase,
+      bodyActivity,
+      ...(locationType !== 'unknown' ? { locationType } : {}),
+    },
+    { seed },
+  );
+
+  // Build compact lexicon vocabulary for Claude.
+  const activeMoods = topMoodTags(stacked.mood, 6, 0.1);
+  const worldIds: string[] = [stacked.inspiration.world];
+  if (stacked.inspiration.worldSecondary) worldIds.push(stacked.inspiration.worldSecondary);
+  const lexicon = buildLexiconContext({
+    timePhase: stacked.timePhase,
+    weatherCondition: stacked.weatherCondition,
+    moonPhase: stacked.moonPhase,
+    dayOfWeek: req.stateVector.time.dayOfWeek,
+    bodyActivity,
+    ...(locationType !== 'unknown' ? { locationType } : {}),
+    activeMoodTags: activeMoods,
+    textureKeys: stacked.inspiration.textureKeys,
+    worldIds,
+  });
+
   const promptJson = buildClaudePromptJson({
     stateVector: req.stateVector,
-    stickers: req.stickers,
-    vibes: {
-      ...(ctx.cosmic?.cosmicWord?.word ? { wordOfTheMoment: ctx.cosmic.cosmicWord.word } : {}),
-      ...(phraseOfTheMoment ? { phraseOfTheMoment: phraseOfTheMoment.phrase } : {}),
-    },
+    moonPhase,
+    stacked,
+    renderPlan,
+    lexicon,
+    ...(locationType !== 'unknown' ? { locationType } : {}),
+    vibes: phraseOfTheMoment ? { phraseOfTheMoment: phraseOfTheMoment.phrase } : {},
     recentHistory: req.recentHistory,
   });
 
-  const musicalPicks = makePicks({ state: promptJson.state, bytes: quantum.bytes.slice(5) });
-  const directorialBlock = composeDirectorialBlock(musicalPicks);
+  let composeResult: ComposeSongResult | null = null;
+  let composition: ComposeSongResult['composition'];
+  let metadata: ComposeSongResult['metadata'];
+  let llmLatencyMs: number | undefined;
+  let llmTokens: { input: number; output: number } | undefined;
 
   try {
     composeResult = await composeSong({
       apiKey: ctx.env.ANTHROPIC_API_KEY,
       promptJson,
-      directorialBlock,
     });
     metadata = composeResult.metadata;
     composition = composeResult.composition;
@@ -107,8 +188,7 @@ export async function runGenerate(
     }));
     const fb = ruleTableComposition({
       stateVector: req.stateVector,
-      stickers: req.stickers,
-      recentIntent: ctx.recentTransitionIntent,
+      ...(ctx.recentTransitionIntent ? { recentIntent: ctx.recentTransitionIntent } : {}),
     });
     metadata = fb.metadata;
     composition = fb.composition;
@@ -134,15 +214,10 @@ export async function runGenerate(
     });
   } catch (err) {
     musicLatencyMs = Date.now() - start;
-    if (err instanceof ElevenLabsError) {
-      // Surface as 503 to the client so it can fall back to a prelude.
-      throw err;
-    }
+    if (err instanceof ElevenLabsError) throw err;
     throw err;
   }
 
-  // Bake the per-song cosmic snapshot into the song's stateVector so the
-  // episode page can render which cosmic word landed for which song.
   const stateVectorForRecord: typeof req.stateVector = ctx.cosmic
     ? { ...req.stateVector, cosmic: ctx.cosmic }
     : req.stateVector;
@@ -154,9 +229,11 @@ export async function runGenerate(
     metadata,
     composition,
     stateVector: stateVectorForRecord,
-    stickers: req.stickers,
     quantumBytes: quantum,
-    musicalPicks,
+    stacked,
+    renderPlan,
+    locationType,
+    bodyActivity,
     ...(phraseOfTheMoment ? { phraseOfTheMoment } : {}),
   };
 
@@ -175,6 +252,7 @@ export async function runGenerate(
     preludeFallback: false,
   };
   if (typeof llmLatencyMs === 'number') result.llmLatencyMs = llmLatencyMs;
+  if (typeof classifyLocationLatencyMs === 'number') result.classifyLocationLatencyMs = classifyLocationLatencyMs;
   if (llmTokens) result.llmTokens = llmTokens;
   return result;
 }

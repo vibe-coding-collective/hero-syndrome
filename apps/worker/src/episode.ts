@@ -17,8 +17,8 @@ export async function finalizeSession(
   } catch (err) {
     if (err instanceof AnthropicError) {
       const phase = session.songs[0]?.stateVector.time.phase ?? 'unknown';
-      const place = session.songs[0]?.stateVector.location?.placeType ?? 'somewhere';
-      title = `An episode at ${phase} in a ${place} place`;
+      const loc = session.songs[0]?.locationType ?? 'somewhere';
+      title = `An episode at ${phase} in a ${loc} place`;
     } else throw err;
   }
 
@@ -67,12 +67,11 @@ function buildTimeline(session: SessionRecord): unknown {
       durationSec: s.durationSec,
       metadata: s.metadata,
       measuredFeatures: s.measuredFeatures,
-      placeType: s.stateVector.location?.placeType,
+      locationType: s.locationType,
       condition: s.stateVector.weather?.condition,
       phase: s.stateVector.time.phase,
-      motionClass: s.stateVector.location?.motionClass,
-      stickers: s.stickers.map((st) => st.emoji),
+      bodyActivity: s.bodyActivity,
+      phraseOfTheMoment: s.phraseOfTheMoment?.phrase,
     })),
-    stickerEvents: session.stickerEvents,
   };
 }

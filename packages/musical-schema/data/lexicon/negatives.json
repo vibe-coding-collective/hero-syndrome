@@ -1,0 +1,65 @@
+{
+  "fixed": [
+    "vocals",
+    "singing",
+    "lyrics",
+    "speech",
+    "voiceover",
+    "choir",
+    "rap",
+    "melodic rap",
+    "spoken word"
+  ],
+  "conditional": {
+    "night_uncanny_phase": [
+      "upbeat pop",
+      "daylight picnic",
+      "major key cheer",
+      "busy EDM festival",
+      "ukulele singalong"
+    ],
+    "bright_day_clear_weather": [
+      "dark ambient only",
+      "slow doom metal",
+      "constant rain storm bed",
+      "muddy indistinct mix",
+      "funeral dirge"
+    ],
+    "fragile_dawn": [
+      "aggressive metal",
+      "club four-on-the-floor banger",
+      "heavy bass drops",
+      "dense double-kick metal"
+    ],
+    "mechanical_afternoon": [
+      "romantic ballad lead",
+      "orchestral Hollywood swell epic",
+      "chaotic free jazz soloing",
+      "lush sentimental strings feature"
+    ],
+    "warm_golden_hour": [
+      "cold digital harshness",
+      "industrial distortion fest",
+      "techno peak-time aggression",
+      "brutalist noise wall"
+    ],
+    "urban_dusk_rain": [
+      "happy major pop chorus",
+      "bluegrass barn dance",
+      "bright brass fanfare parade",
+      "reggae upstroke party"
+    ],
+    "storm_night": [
+      "chipper daytime radio",
+      "acoustic campfire singalong",
+      "children's music",
+      "bright major-key jingle"
+    ],
+    "clear_morning": [
+      "nightclub peak time",
+      "excessive hall reverb wash",
+      "slow funeral pace",
+      "trailer brass overload"
+    ]
+  }
+}

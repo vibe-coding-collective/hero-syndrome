@@ -1,11 +1,10 @@
 import { create } from 'zustand';
 import type {
+  Composition,
   CosmicSnapshot,
   MeasuredFeatures,
   SongMetadata,
   StateVector,
-  Sticker,
-  Composition,
 } from '@hero-syndrome/shared';
 
 export interface PlayedSong {
@@ -25,8 +24,6 @@ export interface SessionSlice {
   endedAt: number | null;
   cosmic: CosmicSnapshot | null;
   songs: PlayedSong[];
-  stickers: Sticker[];
-  stickerEvents: Array<{ emoji: string; placedAt: string }>;
 }
 
 export interface PlaybackSlice {
@@ -55,8 +52,6 @@ export interface AppState extends SessionSlice, PlaybackSlice, SensorsSlice, Epi
   appendSong: (s: PlayedSong) => void;
   setSongMeasured: (songId: string, features: MeasuredFeatures) => void;
   setSongStarted: (songId: string, startedAt: number) => void;
-  addSticker: (sticker: Sticker) => void;
-  pruneStickers: (now: number) => void;
   resetSession: () => void;
 }
 
@@ -66,8 +61,6 @@ const INITIAL_STATE: SessionSlice & PlaybackSlice & SensorsSlice & EpisodeSlice 
   endedAt: null,
   cosmic: null,
   songs: [],
-  stickers: [],
-  stickerEvents: [],
   isPlaying: false,
   currentSongId: null,
   generationLatencyEMA: 60_000,
@@ -96,15 +89,6 @@ export const useStore = create<AppState>((set) => ({
   setSongStarted: (songId, startedAt) =>
     set((p) => ({
       songs: p.songs.map((s) => (s.songId === songId ? { ...s, startedAt } : s)),
-    })),
-  addSticker: (sticker) =>
-    set((p) => ({
-      stickers: [...p.stickers, sticker],
-      stickerEvents: [...p.stickerEvents, { emoji: sticker.emoji, placedAt: sticker.placedAt }],
-    })),
-  pruneStickers: (now) =>
-    set((p) => ({
-      stickers: p.stickers.filter((s) => new Date(s.decayAt).getTime() > now),
     })),
   resetSession: () => set({ ...INITIAL_STATE }),
 }));

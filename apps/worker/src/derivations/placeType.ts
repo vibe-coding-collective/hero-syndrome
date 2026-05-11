@@ -1,5 +1,3 @@
-import type { PlaceType } from '@hero-syndrome/shared';
-
 interface NominatimAddress {
   road?: string;
   neighbourhood?: string;
@@ -25,37 +23,7 @@ export interface NominatimResult {
   class?: string;
 }
 
-export function derivePlaceType(r: NominatimResult): PlaceType {
-  const cat = r.class ?? r.category ?? '';
-  const type = r.type ?? '';
-  const tag = `${cat}=${type}`;
-  if (tag === 'leisure=park' || tag === 'boundary=national_park') return 'park';
-  if (tag === 'natural=beach' || tag === 'natural=coastline') return 'coast';
-  if (cat === 'natural' && type === 'water') return 'water';
-  if (cat === 'waterway') return 'water';
-  if (tag === 'natural=wood' || tag === 'landuse=forest') return 'forest';
-  if (cat === 'railway' && type === 'station') return 'transit';
-  if (cat === 'aeroway') return 'transit';
-  if (cat === 'public_transport' && type === 'station') return 'transit';
-  if (cat === 'landuse' && type === 'industrial') return 'industrial';
-  if (cat === 'landuse' && type === 'residential') return 'residential';
-  if (cat === 'place' && type === 'suburb') return 'residential';
-  if (cat === 'place' && (type === 'village' || type === 'hamlet')) return 'rural';
-  if (cat === 'landuse' && type === 'farmland') return 'rural';
-  if (cat === 'amenity' || cat === 'shop') return 'urban';
-  if (cat === 'landuse' && (type === 'commercial' || type === 'retail')) return 'urban';
-  if (cat === 'highway') {
-    if (['motorway', 'trunk', 'primary'].includes(type)) return 'urban';
-    if (['residential', 'footway', 'service', 'tertiary', 'secondary'].includes(type)) return 'residential';
-  }
-  if (cat === 'place' && (type === 'house' || type === 'farm' || type === 'isolated_dwelling')) return 'residential';
-  if (cat === 'place' && (type === 'city' || type === 'town')) return 'urban';
-  if (cat === 'building') return 'residential';
-  return 'unknown';
-}
-
-export function derivePlaceBundle(r: NominatimResult): {
-  placeType: PlaceType;
+export interface PlaceBundle {
   place?: { category: string; type: string; name?: string };
   road?: { class: string; name?: string };
   neighborhood?: string;
@@ -64,11 +32,15 @@ export function derivePlaceBundle(r: NominatimResult): {
   country?: string;
   countryCode?: string;
   postcode?: string;
-} {
-  const placeType = derivePlaceType(r);
+}
+
+/** Parse Nominatim reverse-geocode response into the raw fields the Claude
+ *  location-classification step consumes. The classifier turns these (plus
+ *  nearby POIs) into one of the 50 `LocationType` ids. */
+export function derivePlaceBundle(r: NominatimResult): PlaceBundle {
   const cat = r.class ?? r.category ?? '';
   const type = r.type ?? '';
-  const result: ReturnType<typeof derivePlaceBundle> = { placeType };
+  const result: PlaceBundle = {};
   if (cat && type) {
     if (cat === 'highway') {
       const road: { class: string; name?: string } = { class: type };

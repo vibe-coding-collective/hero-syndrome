@@ -1,0 +1,58 @@
+{
+  "clear": {
+    "scene": ["clear sky daylight", "open air and visible distance", "dry bright atmosphere"],
+    "texture_hints": ["air shimmer", "clean transient attacks", "low humidity clarity"]
+  },
+  "mainly_clear": {
+    "scene": ["mostly clear with thin high haze", "gentle bright day", "patchy blue sky"],
+    "texture_hints": ["soft high shelf", "light air movement"]
+  },
+  "overcast": {
+    "scene": ["flat grey overcast", "even cloud ceiling", "diffused grey light"],
+    "texture_hints": ["soft box light mood", "no hard shadows", "midrange fog"]
+  },
+  "fog": {
+    "scene": ["heavy fog reducing distance", "moist air and lost horizon", "streetlights swallowed in mist"],
+    "texture_hints": ["blurred distance", "mono-ish stereo", "slow filter wander"]
+  },
+  "drizzle": {
+    "scene": ["fine persistent drizzle", "wet skin and pavement sheen", "soft rain without drama"],
+    "texture_hints": ["granular rain bed", "high-pass drizzle hiss", "gentle wash"]
+  },
+  "freezing_drizzle": {
+    "scene": ["stinging freezing drizzle", "ice needles in damp air", "brittle cold wet"],
+    "texture_hints": ["glass harmonics", "narrow icy band", "stark highs"]
+  },
+  "rain": {
+    "scene": ["steady soaking rain", "urban wet reflections", "continuous roof and pavement sound"],
+    "texture_hints": ["filtered noise bed", "broken pulse", "dark wet mix"]
+  },
+  "freezing_rain": {
+    "scene": ["freezing rain icing surfaces", "dangerous slick streets", "cold anxiety outdoors"],
+    "texture_hints": ["hard brittle transients", "unstable pitch", "thin ice timbre"]
+  },
+  "rain_showers": {
+    "scene": ["on-off rain showers", "sudden wet bursts then pause", "restless sky"],
+    "texture_hints": ["gated noise swells", "intermittent density", "uneven groove"]
+  },
+  "thunderstorm": {
+    "scene": ["distant thunderstorm", "pressure drops and electric air", "heavy sky without constant downpour in frame"],
+    "texture_hints": ["low rumble underlay", "occasional bright transient hits", "sub pressure"]
+  },
+  "thunderstorm_hail": {
+    "scene": ["violent storm with hail", "impact and threat", "chaotic sky"],
+    "texture_hints": ["sharp percussive impacts", "chaotic highs", "panic-adjacent rhythm cuts"]
+  },
+  "snow": {
+    "scene": ["steady snowfall hush", "cold damped acoustics", "wide soft flakes"],
+    "texture_hints": ["hushed highs", "soft transient smear", "sparse resonance"]
+  },
+  "snow_grains": {
+    "scene": ["fine snow grains", "dry cold tick on fabric", "brittle winter"],
+    "texture_hints": ["tick granular texture", "dry cold noise", "pointillist highs"]
+  },
+  "snow_showers": {
+    "scene": ["bursts of snow showers", "swirling visibility", "intermittent whiteout"],
+    "texture_hints": ["swirling filter motion", "density swells", "volatile grains"]
+  }
+}

@@ -1,4 +1,4 @@
-import type { CosmicSnapshot, StateVector, Sticker, WeatherCondition, PlaceType } from './state';
+import type { CosmicSnapshot, StateVector, WeatherCondition } from './state';
 import type {
   Composition,
   MeasuredFeatures,
@@ -11,7 +11,6 @@ import type { EpisodeRecord, QuantumReceipt } from './session';
 export interface GenerateReq {
   sessionId: string;
   stateVector: StateVector;
-  stickers: Sticker[];
   recentHistory: Array<{
     songId: string;
     metadata: SongMetadata;
@@ -50,8 +49,9 @@ export interface WeatherRes {
   sunsetProximityMin: number;
 }
 
+/** Raw reverse-geocode response. The Claude classification step turns this
+ *  (and `nearby`) into one of the 50 `LocationType` ids. */
 export interface GeocodeRes {
-  placeType: PlaceType;
   place?: { category: string; type: string; name?: string };
   road?: { class: string; name?: string };
   neighborhood?: string;

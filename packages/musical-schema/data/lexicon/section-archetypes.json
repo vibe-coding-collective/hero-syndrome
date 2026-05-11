@@ -1,0 +1,282 @@
+{
+  "witching_hour": [
+    {
+      "id": "sub_drift",
+      "section_name": "Sub drift",
+      "duration_weight": 0.35,
+      "positive_local_styles": [
+        "almost inaudible low register",
+        "gradual filter sweep",
+        "suspended harmony"
+      ],
+      "negative_local_styles": ["bright mix", "fast tempo", "catchy pop hook"]
+    },
+    {
+      "id": "shimmer_intrusion",
+      "section_name": "Shimmer intrusion",
+      "duration_weight": 0.38,
+      "positive_local_styles": [
+        "high partials emerging slowly",
+        "slight dissonance cluster",
+        "tension without resolution"
+      ],
+      "negative_local_styles": ["heroic brass cadence", "full major resolution"]
+    },
+    {
+      "id": "dissolve",
+      "section_name": "Dissolve",
+      "duration_weight": 0.27,
+      "positive_local_styles": [
+        "layers thinning out",
+        "long reverb tail only",
+        "unresolved ending"
+      ],
+      "negative_local_styles": ["big finish hit", "vocals enter"]
+    }
+  ],
+  "dawn": [
+    {
+      "id": "first_light",
+      "section_name": "First light",
+      "duration_weight": 0.32,
+      "positive_local_styles": [
+        "single sparse motif",
+        "high-passed airy texture",
+        "gentle granular moisture bed"
+      ],
+      "negative_local_styles": ["full band rock", "loud acoustic drums"]
+    },
+    {
+      "id": "gathering",
+      "section_name": "Gathering",
+      "duration_weight": 0.38,
+      "positive_local_styles": [
+        "second layer enters quietly",
+        "slightly wider stereo field",
+        "repeating ostinato fragment"
+      ],
+      "negative_local_styles": ["four-on-the-floor kick", "lead vocal melody"]
+    },
+    {
+      "id": "open_window",
+      "section_name": "Open window",
+      "duration_weight": 0.3,
+      "positive_local_styles": [
+        "harmony brightens a little",
+        "soft transient attacks",
+        "walking pace implied in rhythm"
+      ],
+      "negative_local_styles": ["dark techno stomp", "screaming leads"]
+    }
+  ],
+  "morning": [
+    {
+      "id": "commute_bed",
+      "section_name": "Commute bed",
+      "duration_weight": 0.35,
+      "positive_local_styles": [
+        "mid-tempo motorik hint",
+        "electric piano and muted guitar",
+        "tight controlled low end"
+      ],
+      "negative_local_styles": ["full symphony", "choir ahhs"]
+    },
+    {
+      "id": "crosswalk",
+      "section_name": "Crosswalk",
+      "duration_weight": 0.38,
+      "positive_local_styles": [
+        "syncopated light percussion",
+        "bass line enters",
+        "forward urban motion"
+      ],
+      "negative_local_styles": ["ambient only no pulse", "ambient drone only"]
+    },
+    {
+      "id": "arrival",
+      "section_name": "Arrival",
+      "duration_weight": 0.27,
+      "positive_local_styles": [
+        "harmony stabilizes on simpler chord",
+        "brighter top octave detail",
+        "slight drop in layer count"
+      ],
+      "negative_local_styles": ["vocals", "melodic rap"]
+    }
+  ],
+  "noon": [
+    {
+      "id": "ensemble_entrance",
+      "section_name": "Ensemble entrance",
+      "duration_weight": 0.33,
+      "positive_local_styles": [
+        "small chamber strings and woodwinds",
+        "light staccato rhythmic figure",
+        "major-leaning but not cheesy harmony"
+      ],
+      "negative_local_styles": ["synthwave only arrangement", "distorted metal guitars"]
+    },
+    {
+      "id": "midday_lift",
+      "section_name": "Midday lift",
+      "duration_weight": 0.42,
+      "positive_local_styles": [
+        "countermelody doubles",
+        "slightly louder ensemble dynamics",
+        "natural breathing phrase ends"
+      ],
+      "negative_local_styles": ["vocals", "four-on-the-floor house peak"]
+    },
+    {
+      "id": "chamber_resolve",
+      "section_name": "Chamber resolve",
+      "duration_weight": 0.25,
+      "positive_local_styles": [
+        "sustained final chord",
+        "gentle decay tails",
+        "return to clear dry-ish balance"
+      ],
+      "negative_local_styles": ["sad only wallow", "harsh digital clipping"]
+    }
+  ],
+  "afternoon": [
+    {
+      "id": "grid",
+      "section_name": "Grid",
+      "duration_weight": 0.38,
+      "positive_local_styles": [
+        "dry programmed percussion",
+        "mono-compatible bass",
+        "hypnotic short loop"
+      ],
+      "negative_local_styles": ["cathedral hall wash", "choir pad"]
+    },
+    {
+      "id": "transit_hum",
+      "section_name": "Transit hum",
+      "duration_weight": 0.35,
+      "positive_local_styles": [
+        "filtered noise movement layer",
+        "subtle pitch drift on pad",
+        "gentle sidechain to kick"
+      ],
+      "negative_local_styles": ["acoustic folk strumming", "lead vocal"]
+    },
+    {
+      "id": "cooldown",
+      "section_name": "Cooldown",
+      "duration_weight": 0.27,
+      "positive_local_styles": [
+        "remove one rhythmic layer",
+        "longer reverb send on pad only",
+        "neutral practical ending"
+      ],
+      "negative_local_styles": ["big EDM drop", "singing"]
+    }
+  ],
+  "golden_hour": [
+    {
+      "id": "amber_bed",
+      "section_name": "Amber bed",
+      "duration_weight": 0.35,
+      "positive_local_styles": [
+        "warm wide pads",
+        "slow chord changes",
+        "soft tape hiss bed"
+      ],
+      "negative_local_styles": ["percussion-forward mix", "vocals"]
+    },
+    {
+      "id": "snow_or_glow",
+      "section_name": "Snow light",
+      "duration_weight": 0.4,
+      "positive_local_styles": [
+        "sparkling treble detail",
+        "hushed transient smear",
+        "wide sparse resonance between notes"
+      ],
+      "negative_local_styles": ["busy drum fills", "rap beat"]
+    },
+    {
+      "id": "afterglow",
+      "section_name": "Afterglow",
+      "duration_weight": 0.25,
+      "positive_local_styles": [
+        "melody thins to single line",
+        "low-pass closes gently",
+        "intimate small ending"
+      ],
+      "negative_local_styles": ["sudden digital mute", "choir vocal pad"]
+    }
+  ],
+  "dusk": [
+    {
+      "id": "wet_pavement",
+      "section_name": "Wet pavement",
+      "duration_weight": 0.35,
+      "positive_local_styles": [
+        "distant kick or pulse",
+        "filtered noise bed",
+        "minor leaning harmony field"
+      ],
+      "negative_local_styles": ["acoustic campfire strum", "vocals"]
+    },
+    {
+      "id": "neon_bleed",
+      "section_name": "Neon bleed",
+      "duration_weight": 0.38,
+      "positive_local_styles": [
+        "arpeggiated synth pattern",
+        "delay throws on hits",
+        "slightly unstable detuned layer"
+      ],
+      "negative_local_styles": ["full orchestra only", "choir"]
+    },
+    {
+      "id": "carry_home",
+      "section_name": "Carry home",
+      "duration_weight": 0.27,
+      "positive_local_styles": [
+        "piano motif returns softer",
+        "low-pass on master gentle",
+        "tail-heavy reverb ending"
+      ],
+      "negative_local_styles": ["big chorus vocals", "EDM riser into drop"]
+    }
+  ],
+  "night": [
+    {
+      "id": "pressure_drop",
+      "section_name": "Pressure drop",
+      "duration_weight": 0.35,
+      "positive_local_styles": [
+        "low sub rumble bed",
+        "sparse irregular hits",
+        "intentional irregular silence gaps"
+      ],
+      "negative_local_styles": ["steady dance four-on-the-floor", "vocals"]
+    },
+    {
+      "id": "lightning_colour",
+      "section_name": "Lightning colour",
+      "duration_weight": 0.38,
+      "positive_local_styles": [
+        "brief bright transient flash in highs",
+        "quick filter open then close",
+        "cluster harmony tension"
+      ],
+      "negative_local_styles": ["full rock drum kit", "singing"]
+    },
+    {
+      "id": "after_rain",
+      "section_name": "After rain",
+      "duration_weight": 0.27,
+      "positive_local_styles": [
+        "residual noise and hiss bed",
+        "slow amplitude release",
+        "single held quiet tone"
+      ],
+      "negative_local_styles": ["party crowd ambience", "vocals"]
+    }
+  ]
+}

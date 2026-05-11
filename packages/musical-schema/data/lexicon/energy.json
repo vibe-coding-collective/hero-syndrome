@@ -1,0 +1,34 @@
+{
+  "motion": {
+    "very_low": ["glacial harmonic motion", "almost static pulse", "breath-slow tempo feel"],
+    "low": ["slow deliberate motion", "unhurried underlying pulse", "walking-through-water groove"],
+    "mid": ["moderate forward motion", "clear walking pace implied", "steady commuter tempo"],
+    "high": ["brisk kinetic motion", "active rhythmic surface", "daytime momentum"],
+    "very_high": ["high kinetic drive", "urgent forward energy", "near-run pulse"]
+  },
+  "density": {
+    "sparse": ["sparse instrumentation", "lots of silence between events", "single-thread texture"],
+    "moderate": ["moderate layering", "two to three clear layers", "room between parts"],
+    "dense": ["dense overlapping layers", "full vertical stack", "little empty space"]
+  },
+  "tension": {
+    "calm": ["low harmonic tension", "consonant and settled", "safe resolution tendency"],
+    "moderate": ["balanced tension", "mildly unstable harmony", "questioning but not crisis"],
+    "high": [
+      "high harmonic tension",
+      "clustered or suspended harmony",
+      "delayed resolution on purpose"
+    ]
+  },
+  "brightness": {
+    "very_dark": ["very dark mix", "narrow stereo and rolled-off highs", "submarine listening"],
+    "dark": ["dark warm mix", "muted highs", "candlelight spectrum"],
+    "neutral": ["neutral spectral balance", "honest mid-forward balance"],
+    "bright": ["bright clear mix", "airy highs", "daylight clarity"],
+    "very_bright": [
+      "very bright almost overexposed highs",
+      "sun-on-snow glare",
+      "crisp transient emphasis"
+    ]
+  }
+}

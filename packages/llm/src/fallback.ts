@@ -2,13 +2,12 @@ import type {
   Composition,
   SongMetadata,
   StateVector,
-  Sticker,
+  TimePhase,
   TransitionIntent,
 } from '@hero-syndrome/shared';
 
 export interface FallbackInput {
   stateVector: StateVector;
-  stickers: Sticker[];
   recentIntent?: TransitionIntent;
 }
 
@@ -17,15 +16,58 @@ export interface FallbackResult {
   composition: Composition;
 }
 
-const PHASE_PALETTE: Record<string, { instrumentation: string[]; key: string; bpm: [number, number]; genre: string[] }> = {
-  dawn: { instrumentation: ['warm pad', 'felt piano'], key: 'F major', bpm: [56, 70], genre: ['ambient', 'neo-classical'] },
-  morning: { instrumentation: ['nylon guitar', 'rhodes', 'soft brushes'], key: 'C major', bpm: [78, 96], genre: ['neo-classical'] },
-  noon: { instrumentation: ['acoustic guitar', 'upright bass'], key: 'G major', bpm: [88, 110], genre: ['folk-inflected'] },
-  afternoon: { instrumentation: ['electric piano', 'ride cymbal', 'flute'], key: 'D mixolydian', bpm: [82, 102], genre: ['contemplative'] },
-  goldenHour: { instrumentation: ['solo cello', 'tape hiss', 'warm pad'], key: 'A minor', bpm: [62, 78], genre: ['cinematic', 'ambient'] },
-  dusk: { instrumentation: ['arpeggiated synth', 'bowed bass', 'choir pad'], key: 'E minor', bpm: [70, 88], genre: ['ambient'] },
-  night: { instrumentation: ['analog pad', 'low drone', 'distant rim shot'], key: 'B minor', bpm: [60, 76], genre: ['drone', 'ambient'] },
-  witchingHour: { instrumentation: ['detuned strings', 'sub bass', 'whispered choir pad'], key: 'F# minor', bpm: [54, 68], genre: ['drone', 'dark-ambient'] },
+const PHASE_PALETTE: Record<
+  TimePhase,
+  { instrumentation: string[]; key: string; bpm: [number, number]; genre: string[] }
+> = {
+  dawn: {
+    instrumentation: ['warm pad', 'felt piano'],
+    key: 'F major',
+    bpm: [56, 70],
+    genre: ['ambient', 'neo-classical'],
+  },
+  morning: {
+    instrumentation: ['nylon guitar', 'rhodes', 'soft brushes'],
+    key: 'C major',
+    bpm: [78, 96],
+    genre: ['neo-classical'],
+  },
+  noon: {
+    instrumentation: ['acoustic guitar', 'upright bass'],
+    key: 'G major',
+    bpm: [88, 110],
+    genre: ['folk-inflected'],
+  },
+  afternoon: {
+    instrumentation: ['electric piano', 'ride cymbal', 'flute'],
+    key: 'D mixolydian',
+    bpm: [82, 102],
+    genre: ['contemplative'],
+  },
+  golden_hour: {
+    instrumentation: ['solo cello', 'tape hiss', 'warm pad'],
+    key: 'A minor',
+    bpm: [62, 78],
+    genre: ['cinematic', 'ambient'],
+  },
+  dusk: {
+    instrumentation: ['arpeggiated synth', 'bowed bass', 'choir pad'],
+    key: 'E minor',
+    bpm: [70, 88],
+    genre: ['ambient'],
+  },
+  night: {
+    instrumentation: ['analog pad', 'low drone', 'distant rim shot'],
+    key: 'B minor',
+    bpm: [60, 76],
+    genre: ['drone', 'ambient'],
+  },
+  witching_hour: {
+    instrumentation: ['detuned strings', 'sub bass', 'whispered choir pad'],
+    key: 'F# minor',
+    bpm: [54, 68],
+    genre: ['drone', 'dark-ambient'],
+  },
 };
 
 function intensityDescriptor(v: number): string {
@@ -37,24 +79,22 @@ function intensityDescriptor(v: number): string {
 }
 
 export function ruleTableComposition(input: FallbackInput): FallbackResult {
-  const { stateVector, stickers } = input;
+  const { stateVector } = input;
   const phase = stateVector.time.phase;
-  const palette = PHASE_PALETTE[phase] ?? PHASE_PALETTE.afternoon!;
+  const palette = PHASE_PALETTE[phase] ?? PHASE_PALETTE.afternoon;
   const intensity = stateVector.movement.intensityNormalized;
   const intensityWord = intensityDescriptor(intensity);
   const condition = stateVector.weather?.condition ?? 'clear';
-  const placeType = stateVector.location?.placeType ?? 'unknown';
-  const stickerHint = stickers.length > 0 ? `mood stickers active: ${stickers.map((s) => s.emoji).join(' ')}.` : '';
 
   const transitionIntent: TransitionIntent =
-    stickers.length > 0 ? 'break' : input.recentIntent === 'continue' ? 'evolve' : 'continue';
+    input.recentIntent === 'continue' ? 'evolve' : 'continue';
 
   const bpm: [number, number] = [
     Math.round(palette.bpm[0] + intensity * 12),
     Math.round(palette.bpm[1] + intensity * 18),
   ];
 
-  const overallPrompt = `A 60-second instrumental gesture for ${phase}, ${intensityWord} intensity, ${condition} weather, in or around a ${placeType} place. ${stickerHint} Lead instruments: ${palette.instrumentation.join(', ')}. Key: ${palette.key}. BPM range ${bpm[0]}-${bpm[1]}.`;
+  const overallPrompt = `A 60-second instrumental gesture for ${phase}, ${intensityWord} intensity, ${condition} weather. Lead instruments: ${palette.instrumentation.join(', ')}. Key: ${palette.key}. BPM range ${bpm[0]}-${bpm[1]}.`;
 
   const opening = `${palette.instrumentation[0]} in ${palette.key}, BPM ${bpm[0]}-${bpm[1]}, ${intensityWord} energy. ${condition} weather flavoring. Establish the mood within the first few seconds; no long intro.`;
   const close = `Resolve the gesture with ${palette.instrumentation[1] ?? palette.instrumentation[0]} settling, BPM ${Math.round((bpm[0] + bpm[1]) / 2)}, leaving room for a crossfade into the next clip.`;

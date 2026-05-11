@@ -1,0 +1,21 @@
+{
+  "monday": ["Monday focused seriousness", "week-start concentration", "slightly heavier step"],
+  "tuesday": ["Tuesday steady grind", "mid-start patience", "practical head-down mood"],
+  "wednesday": [
+    "midweek low battery",
+    "flattened social energy",
+    "introspective hump-day tint"
+  ],
+  "thursday": ["Thursday neutral forward", "almost-Friday patience", "even practical keel"],
+  "friday": [
+    "Friday anticipatory lift",
+    "end-of-week social warmth",
+    "slightly looser groove permission"
+  ],
+  "saturday": [
+    "Saturday high social energy",
+    "playful weekend brightness",
+    "expanded dynamic permission"
+  ],
+  "sunday": ["Sunday reflective slowdown", "tender domestic scale", "soft closing-week mood"]
+}

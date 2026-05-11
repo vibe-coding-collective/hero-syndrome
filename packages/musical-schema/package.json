@@ -9,8 +9,7 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
-    },
-    "./schema.json": "./data/schema.json"
+    }
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

@@ -15,10 +15,10 @@ export default function WhatThisIs() {
               starts. It is composed, in real time, from the small reportage of
               your phone. From the tilt of how you&rsquo;re moving, the weather
               above you, the kind of place you&rsquo;re standing in, the
-              hour&rsquo;s slow drift toward dusk, the planet&rsquo;s
-              electromagnetic flutter overhead. You drop a mood onto it. It
-              listens. It bends. When you stop, what played becomes an{' '}
-              <em>episode</em>. Titled, dated, replayable, sendable.
+              hour&rsquo;s slow drift toward dusk, the moon&rsquo;s slow tide
+              on mood, the planet&rsquo;s electromagnetic flutter overhead.
+              When you stop, what played becomes an <em>episode</em>. Titled,
+              dated, replayable, sendable.
             </p>
           </div>
 

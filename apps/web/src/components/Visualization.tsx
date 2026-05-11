@@ -6,15 +6,16 @@ interface VisualizationProps {
 }
 
 const PALETTES: Record<string, [string, string]> = {
-  park: ['#3A5A47', '#A9C28F'],
-  forest: ['#2D4A35', '#85A874'],
-  coast: ['#3D7C8B', '#B7D4DC'],
-  water: ['#1F4E69', '#9CC4D7'],
-  urban: ['#B85A2E', '#F2C572'],
-  industrial: ['#5C5751', '#C7B395'],
-  residential: ['#6B6451', '#D6C2A0'],
-  rural: ['#8E7748', '#E5D2A1'],
-  transit: ['#3A364E', '#A39FBE'],
+  natural: ['#3A5A47', '#A9C28F'],
+  leisure: ['#3A5A47', '#A9C28F'],
+  waterway: ['#1F4E69', '#9CC4D7'],
+  amenity: ['#B85A2E', '#F2C572'],
+  shop: ['#B85A2E', '#F2C572'],
+  building: ['#6B6451', '#D6C2A0'],
+  landuse: ['#8E7748', '#E5D2A1'],
+  railway: ['#3A364E', '#A39FBE'],
+  highway: ['#5C5751', '#C7B395'],
+  aeroway: ['#3A364E', '#A39FBE'],
   unknown: ['#564F4A', '#B8A992'],
 };
 
@@ -23,10 +24,10 @@ const PHASE_TINTS: Record<string, [number, number, number]> = {
   morning: [0.95, 0.92, 0.82],
   noon: [1.0, 1.0, 0.94],
   afternoon: [0.96, 0.92, 0.78],
-  goldenHour: [0.95, 0.74, 0.50],
+  golden_hour: [0.95, 0.74, 0.50],
   dusk: [0.62, 0.50, 0.66],
   night: [0.30, 0.34, 0.55],
-  witchingHour: [0.18, 0.20, 0.40],
+  witching_hour: [0.18, 0.20, 0.40],
 };
 
 export function Visualization({ analyser }: VisualizationProps) {
@@ -82,8 +83,8 @@ export function Visualization({ analyser }: VisualizationProps) {
       }
       const centroidNorm = totalMag > 0 ? weighted / totalMag / freq.length : 0;
 
-      const placeType = sv?.location?.placeType ?? 'unknown';
-      const palette = PALETTES[placeType] ?? PALETTES.unknown!;
+      const placeCategory = sv?.location?.place?.category ?? sv?.location?.road?.class ?? 'unknown';
+      const palette = PALETTES[placeCategory] ?? PALETTES.unknown!;
       const phaseTint = PHASE_TINTS[sv?.time?.phase ?? 'afternoon'] ?? [1, 1, 1];
 
       const w = canvas.width;

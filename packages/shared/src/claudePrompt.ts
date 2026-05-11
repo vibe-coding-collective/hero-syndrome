@@ -1,11 +1,21 @@
-import type { DayOfWeek, MotionClass, MovementPattern, PlaceType, TimePhase, WeatherCondition } from './state';
+import type {
+  BodyActivity,
+  DayOfWeek,
+  LocationType,
+  MoonPhase,
+  TimePhase,
+  WeatherCondition,
+} from './state';
 import type { MeasuredFeatures, SongMetadata } from './song';
+import type { StackedMeta } from './musicalPicks';
 
 /**
  * The single JSON object embedded in the user message when calling Claude
- * for `compose_song`. Built by `buildClaudePromptJson` in the LLM package
- * from the raw StateVector + cosmic snapshot + recent history. Not the
- * same shape as StateVector — this is the Claude-facing presentation.
+ * for `compose_song`. Built by `buildClaudePromptJson` in the LLM package.
+ *
+ * Per option b-i: Claude receives the StackedMeta + RenderPlan as structured
+ * context plus a compact lexicon vocabulary subset, then writes the final
+ * `composition_plan` (overallPrompt + sections) itself.
  */
 export interface ClaudePromptJson {
   state: {
@@ -15,13 +25,12 @@ export interface ClaudePromptJson {
       phase: TimePhase;
       dayOfWeek: DayOfWeek;
     };
-    body: {
-      activity: MotionClass;
-      motion: MovementPattern;
-      intensity: 'low' | 'moderate' | 'high';
+    moonPhase: MoonPhase;
+    body?: {
+      activity: BodyActivity;
     };
     location?: {
-      placeType?: PlaceType;
+      type: LocationType;
       place?: {
         type: string;
         name?: string;
@@ -48,9 +57,15 @@ export interface ClaudePromptJson {
       sunsetProximityMin: number;
     };
   };
-  userInput: unknown[];
+  /** Stacked numeric meta + BPM/duration target. Claude composes around these. */
+  stacked: StackedMeta;
+  renderPlan: {
+    bpm: number;
+    totalDurationMs: number;
+  };
+  /** Compact subset of lexicon phrases relevant to this song's stacked meta. */
+  lexicon: LexiconContextDict;
   vibes: {
-    wordOfTheMoment?: string;
     phraseOfTheMoment?: string;
   };
   recentHistory: Array<{
@@ -58,4 +73,24 @@ export interface ClaudePromptJson {
     metadata: SongMetadata;
     measuredFeatures?: MeasuredFeatures;
   }>;
+}
+
+export interface WeatherLexEntry {
+  scene: string[];
+  texture_hints: string[];
+}
+
+export interface LexiconContextDict {
+  product_positives: string[];
+  product_negatives: string[];
+  worlds: Record<string, string[]>;
+  textures: Record<string, string[]>;
+  moods: Record<string, string[]>;
+  weather: WeatherLexEntry;
+  moon_undertow: string[];
+  moon_tide_dynamics: Record<'high_spring' | 'mid' | 'low_neap', string[]>;
+  day: string[];
+  body?: string[];
+  location?: string[];
+  negatives_fixed: string[];
 }

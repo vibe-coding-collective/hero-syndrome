@@ -15,9 +15,9 @@ export default function Hero() {
         <div className="mt-12 md:mt-16 max-w-2xl">
           <p className="font-serif italic text-[19px] md:text-[22px] leading-[1.5] text-ink/85">
             An adaptive score, generated live from your phone&rsquo;s signals.
-            Time, weather, motion, place, Earth&rsquo;s electromagnetic mood,
-            and the moods you drop on it. A session becomes an episode you
-            can replay or send.
+            Time, weather, motion, place, the moon overhead, and Earth&rsquo;s
+            electromagnetic mood. A session becomes an episode you can replay
+            or send.
           </p>
         </div>
 

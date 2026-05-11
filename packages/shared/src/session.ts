@@ -1,4 +1,9 @@
-import type { CosmicSnapshot, StateVector, Sticker } from './state';
+import type {
+  BodyActivity,
+  CosmicSnapshot,
+  LocationType,
+  StateVector,
+} from './state';
 import type {
   Composition,
   MeasuredFeatures,
@@ -6,7 +11,7 @@ import type {
   QuantumBytes,
   SongMetadata,
 } from './song';
-import type { MusicalPicks } from './musicalPicks';
+import type { RenderPlan, StackedMeta } from './musicalPicks';
 
 export interface SongRecord {
   songId: string;
@@ -16,10 +21,16 @@ export interface SongRecord {
   composition: Composition;
   measuredFeatures?: MeasuredFeatures;
   stateVector: StateVector;
-  stickers: Sticker[];
   quantumBytes: QuantumBytes;
   phraseOfTheMoment?: PhraseOfTheMoment;
-  musicalPicks?: MusicalPicks;
+  /** Stacked numeric meta for the song. Replaces legacy `musicalPicks`. */
+  stacked?: StackedMeta;
+  /** BPM, duration target, body, day, location. */
+  renderPlan?: RenderPlan;
+  /** Classified location (1-of-50 + unknown). */
+  locationType?: LocationType;
+  /** Body activity at song time (sensor-derived). */
+  bodyActivity?: BodyActivity;
 }
 
 export interface SessionRecord {
@@ -28,7 +39,6 @@ export interface SessionRecord {
   endedAt?: string;
   cosmic?: CosmicSnapshot;
   songs: SongRecord[];
-  stickerEvents: Array<{ emoji: string; placedAt: string }>;
 }
 
 export interface QuantumReceipt {

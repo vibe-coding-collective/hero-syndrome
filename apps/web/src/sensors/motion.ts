@@ -1,4 +1,4 @@
-import type { MotionClass, MovementPattern } from '@hero-syndrome/shared';
+import type { BodyActivity, MovementPattern } from '@hero-syndrome/shared';
 
 const WINDOW_MS = 4000;
 const SAMPLE_HZ = 10;
@@ -8,7 +8,7 @@ const VEHICLE_DURATION_MS = 10000;
 
 export interface MotionReading {
   intensityNormalized: number;
-  motionClass: MotionClass;
+  bodyActivity: BodyActivity;
   pattern: MovementPattern;
 }
 
@@ -51,7 +51,7 @@ function autocorrPeak(samples: Sample[], minLagS: number, maxLagS: number): { pe
   return { peak: bestPeak, lag: bestLag };
 }
 
-function classify(samples: Sample[], gpsSpeedMps: number, gpsHighSinceMs: number, intensity: number): MotionClass {
+function classify(samples: Sample[], gpsSpeedMps: number, gpsHighSinceMs: number, intensity: number): BodyActivity {
   if (gpsSpeedMps > VEHICLE_GPS_THRESHOLD_MPS && gpsHighSinceMs >= VEHICLE_DURATION_MS) return 'vehicle';
   const ac = autocorrPeak(samples, 0.25, 0.7);
   if (ac.peak > 0.5 && ac.lag >= 0.25 && ac.lag <= 0.4 && intensity > 0.3) return 'running';
@@ -73,9 +73,9 @@ export class MotionSensor {
   private samples: Sample[] = [];
   private gpsSpeedMps = 0;
   private gpsHighSinceMs = 0;
-  private lastClass: MotionClass = 'still';
+  private lastClass: BodyActivity = 'still';
   private lastPattern: MovementPattern = 'still';
-  private pendingClass: MotionClass | null = null;
+  private pendingClass: BodyActivity | null = null;
   private pendingPattern: MovementPattern | null = null;
   private listener: ((event: DeviceMotionEvent) => void) | null = null;
   private running = false;
@@ -132,7 +132,7 @@ export class MotionSensor {
     const candidate = classify(samples, this.gpsSpeedMps, gpsHighDuration, intensity);
     const candidatePattern = classifyPattern(samples);
 
-    let motionClass: MotionClass;
+    let motionClass: BodyActivity;
     if (candidate === this.lastClass) {
       motionClass = this.lastClass;
       this.pendingClass = null;
@@ -158,7 +158,7 @@ export class MotionSensor {
       this.pendingPattern = candidatePattern;
     }
 
-    return { intensityNormalized: Math.max(0, Math.min(1, intensity)), motionClass, pattern };
+    return { intensityNormalized: Math.max(0, Math.min(1, intensity)), bodyActivity: motionClass, pattern };
   }
 }
 

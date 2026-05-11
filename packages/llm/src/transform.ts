@@ -1,16 +1,23 @@
 import type {
   ClaudePromptJson,
+  LexiconContextDict,
+  LocationType,
   MeasuredFeatures,
+  MoonPhase,
+  RenderPlan,
   SongMetadata,
+  StackedMeta,
   StateVector,
-  Sticker,
 } from '@hero-syndrome/shared';
 
 export interface BuildPromptInput {
   stateVector: StateVector;
-  stickers: Sticker[];
+  moonPhase: MoonPhase;
+  stacked: StackedMeta;
+  renderPlan: RenderPlan;
+  lexicon: LexiconContextDict;
+  locationType?: LocationType;
   vibes: {
-    wordOfTheMoment?: string;
     phraseOfTheMoment?: string;
   };
   recentHistory: Array<{
@@ -20,50 +27,51 @@ export interface BuildPromptInput {
   }>;
 }
 
-function intensityBucket(v: number): 'low' | 'moderate' | 'high' {
-  if (v < 0.33) return 'low';
-  if (v < 0.66) return 'moderate';
-  return 'high';
-}
-
 export function buildClaudePromptJson(input: BuildPromptInput): ClaudePromptJson {
   const sv = input.stateVector;
-
-  const body: ClaudePromptJson['state']['body'] = {
-    activity: sv.location?.motionClass ?? 'still',
-    motion: sv.movement.pattern,
-    intensity: intensityBucket(sv.movement.intensityNormalized),
-  };
 
   const out: ClaudePromptJson = {
     state: {
       timestamp: sv.timestamp,
       time: sv.time,
-      body,
+      moonPhase: input.moonPhase,
     },
-    userInput: [],
+    stacked: input.stacked,
+    renderPlan: {
+      bpm: input.renderPlan.bpm,
+      totalDurationMs: input.renderPlan.totalDurationMs,
+    },
+    lexicon: input.lexicon,
     vibes: {},
     recentHistory: input.recentHistory,
   };
 
-  if (sv.location) {
-    const loc: NonNullable<ClaudePromptJson['state']['location']> = {};
-    if (sv.location.placeType && sv.location.placeType !== 'unknown') loc.placeType = sv.location.placeType;
-    if (sv.location.place?.type) {
+  if (sv.location?.bodyActivity) {
+    out.state.body = { activity: sv.location.bodyActivity };
+  }
+
+  if (sv.location || input.locationType) {
+    const loc: NonNullable<ClaudePromptJson['state']['location']> = {
+      type: input.locationType ?? 'unknown',
+    };
+    if (sv.location?.place?.type) {
       const place: { type: string; name?: string } = { type: sv.location.place.type };
       if (sv.location.place.name) place.name = sv.location.place.name;
       loc.place = place;
     }
-    if (sv.location.city) loc.city = sv.location.city;
-    if (sv.location.country) loc.country = sv.location.country;
-    if (sv.location.nearby && sv.location.nearby.length > 0) loc.nearby = sv.location.nearby;
-    if (Object.keys(loc).length > 0) out.state.location = loc;
+    if (sv.location?.city) loc.city = sv.location.city;
+    if (sv.location?.country) loc.country = sv.location.country;
+    if (sv.location?.nearby && sv.location.nearby.length > 0) {
+      loc.nearby = sv.location.nearby;
+    }
+    out.state.location = loc;
   }
 
   if (sv.weather) out.state.weather = sv.weather;
 
-  if (input.vibes.wordOfTheMoment) out.vibes.wordOfTheMoment = input.vibes.wordOfTheMoment;
-  if (input.vibes.phraseOfTheMoment) out.vibes.phraseOfTheMoment = input.vibes.phraseOfTheMoment;
+  if (input.vibes.phraseOfTheMoment) {
+    out.vibes.phraseOfTheMoment = input.vibes.phraseOfTheMoment;
+  }
 
   return out;
 }

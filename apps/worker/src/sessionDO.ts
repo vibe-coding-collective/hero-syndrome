@@ -1,11 +1,9 @@
 import type {
-  EpisodeRecord,
   FinalizeReq,
   GenerateReq,
   GenerateRes,
   MeasuredFeatures,
   SessionRecord,
-  Sticker,
 } from '@hero-syndrome/shared';
 import { runGenerate } from './generate';
 import { finalizeSession } from './episode';
@@ -36,9 +34,6 @@ export class SessionDO {
     if (url.pathname === '/finalize' && request.method === 'POST') {
       return this.handleFinalize(sessionId, request);
     }
-    if (url.pathname === '/sticker' && request.method === 'POST') {
-      return this.handleSticker(sessionId, request);
-    }
     if (url.pathname === '/measured' && request.method === 'POST') {
       return this.handleMeasured(sessionId, request);
     }
@@ -62,7 +57,6 @@ export class SessionDO {
       sessionId,
       startedAt: new Date().toISOString(),
       songs: [],
-      stickerEvents: [],
       finalized: false,
       debugLog: [],
     };
@@ -107,9 +101,6 @@ export class SessionDO {
     }
     s.lastGenerateTs = now;
 
-    // Per-song fresh cosmic. The session-level s.cosmic stays as the FIRST
-    // snapshot (used for episode title flavoring). Each song additionally
-    // records its own cosmic block via the per-song stateVector.
     let perSongCosmic: SessionDoState['cosmic'] | undefined;
     try {
       perSongCosmic = await getCosmic(this.env);
@@ -134,15 +125,20 @@ export class SessionDO {
         },
         body,
       );
+      const r = result.songRecord;
       const songRec = {
-        songId: result.songRecord.songId,
-        startedAt: result.songRecord.startedAt,
-        durationSec: result.songRecord.durationSec,
-        metadata: result.songRecord.metadata,
-        composition: result.songRecord.composition,
-        stateVector: result.songRecord.stateVector,
-        stickers: result.songRecord.stickers,
-        quantumBytes: result.songRecord.quantumBytes,
+        songId: r.songId,
+        startedAt: r.startedAt,
+        durationSec: r.durationSec,
+        metadata: r.metadata,
+        composition: r.composition,
+        stateVector: r.stateVector,
+        quantumBytes: r.quantumBytes,
+        ...(r.phraseOfTheMoment ? { phraseOfTheMoment: r.phraseOfTheMoment } : {}),
+        ...(r.stacked ? { stacked: r.stacked } : {}),
+        ...(r.renderPlan ? { renderPlan: r.renderPlan } : {}),
+        ...(r.locationType ? { locationType: r.locationType } : {}),
+        ...(r.bodyActivity ? { bodyActivity: r.bodyActivity } : {}),
       };
       s.songs.push(songRec);
       this.appendDebug(s, 'song.append', {
@@ -150,7 +146,9 @@ export class SessionDO {
         transition: songRec.metadata.transitionIntent,
         preludeFallback: result.preludeFallback,
         llmLatencyMs: result.llmLatencyMs,
+        classifyLocationLatencyMs: result.classifyLocationLatencyMs,
         musicLatencyMs: result.musicLatencyMs,
+        locationType: songRec.locationType,
       });
       await this.saveState(s);
       await this.ensureAlarm();
@@ -160,7 +158,6 @@ export class SessionDO {
       const errDetail = (err as any)?.status ? `[${(err as any).status}] ${(err as any)?.body ?? ''}` : '';
       console.error(JSON.stringify({ event: 'generate.error', sessionId, error: errStr, detail: errDetail }));
       this.appendDebug(s, 'generate.error', String(err));
-      // Don't keep the rate-limit penalty when we failed.
       delete s.lastGenerateTs;
       await this.saveState(s);
       return new Response('generate failed', { status: 503 });
@@ -184,13 +181,10 @@ export class SessionDO {
         ...(s.endedAt ? { endedAt: s.endedAt } : {}),
         ...(s.cosmic ? { cosmic: s.cosmic } : {}),
         songs: s.songs,
-        stickerEvents: s.stickerEvents,
       };
       const { result } = await finalizeSession(this.env, session);
       this.appendDebug(s, 'finalize.complete', { episodeId: result.episodeId });
       await this.saveState(s);
-      // Schedule deletion shortly after; keep DO around a few minutes for late
-      // debug requests, but no longer needed after data is in KV.
       await this.state.storage.setAlarm(Date.now() + 5 * 60 * 1000);
       return Response.json(result);
     } catch (err) {
@@ -199,17 +193,6 @@ export class SessionDO {
       await this.saveState(s);
       return new Response('finalize failed', { status: 500 });
     }
-  }
-
-  private async handleSticker(sessionId: string, request: Request): Promise<Response> {
-    const s = await this.loadState(sessionId);
-    if (!s) return new Response('no session', { status: 404 });
-    const body = (await request.json()) as { emoji: string; placedAt?: string };
-    s.stickerEvents.push({ emoji: body.emoji, placedAt: body.placedAt ?? new Date().toISOString() });
-    this.appendDebug(s, 'sticker.add', { emoji: body.emoji });
-    await this.saveState(s);
-    await this.ensureAlarm();
-    return Response.json({ ok: true });
   }
 
   private async handleMeasured(sessionId: string, request: Request): Promise<Response> {

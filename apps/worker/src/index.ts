@@ -106,20 +106,6 @@ async function routeRequest(
     });
   }
 
-  // POST /session/:sessionId/sticker
-  m = norm.match(/^\/session\/([^/]+)\/sticker$/);
-  if (request.method === 'POST' && m) {
-    const sessionId = m[1]!;
-    setSessionId(sessionId);
-    const id = env.SESSION_DO.idFromName(sessionId);
-    const stub = env.SESSION_DO.get(id);
-    return stub.fetch(`https://session/sticker?sessionId=${encodeURIComponent(sessionId)}`, {
-      method: 'POST',
-      body: await request.text(),
-      headers: { 'content-type': 'application/json' },
-    });
-  }
-
   // POST /session/:sessionId/measured
   m = norm.match(/^\/session\/([^/]+)\/measured$/);
   if (request.method === 'POST' && m) {

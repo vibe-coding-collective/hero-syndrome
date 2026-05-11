@@ -1,0 +1,37 @@
+{
+  "tide_dynamics": {
+    "high_spring": [
+      "wide emotional dynamics",
+      "strong contrast between sparse and full",
+      "tidal swell in intensity"
+    ],
+    "mid": ["moderate emotional range", "balanced ebb and flow"],
+    "low_neap": [
+      "restrained even dynamics",
+      "compressed emotional range",
+      "flat tide emotional waterline"
+    ]
+  },
+  "undertow": {
+    "new": ["tentative unresolved undertow", "empty space waiting to fill", "quiet threshold"],
+    "waxing_crescent": ["gathering undertow", "motifs coalescing slowly", "sharpening intent"],
+    "first_quarter": ["steady pragmatic undertow", "even-keel persistence", "neither flood nor ebb"],
+    "waxing_gibbous": [
+      "accumulating luminous pressure",
+      "brightness before peak",
+      "stacking layers underneath"
+    ],
+    "full": [
+      "exposed charged undertow",
+      "everything visible at once",
+      "hypnotic lunar glare in the mix"
+    ],
+    "waning_gibbous": [
+      "recounting and simplifying undertow",
+      "afterglow of fullness",
+      "letting air back in"
+    ],
+    "third_quarter": ["critical even undertow", "trimming excess", "release without drama"],
+    "waning_crescent": ["emptied devotional undertow", "late-night dissolve", "last embers"]
+  }
+}

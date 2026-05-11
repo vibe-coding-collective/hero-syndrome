@@ -48,8 +48,6 @@ export const api = {
   cosmicGlobal: () => jget<CosmicRes>('/cosmic'),
   cosmicSession: (sessionId: string) => jget<CosmicRes>(`/session/${sessionId}/cosmic`),
   preludesManifest: () => jget<PreludeManifest>('/preludes/manifest.json'),
-  recordSticker: (sessionId: string, emoji: string) =>
-    jpost<{ ok: true }>(`/session/${sessionId}/sticker`, { emoji, placedAt: new Date().toISOString() }),
   recordMeasured: (sessionId: string, body: MeasuredFeaturesReq) =>
     jpost<{ ok: true }>(`/session/${sessionId}/measured`, body),
 };

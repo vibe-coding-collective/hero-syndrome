@@ -57,7 +57,6 @@ export class SongSynthesizer {
     const body: GenerateReq = {
       sessionId: state.sessionId,
       stateVector: state.stateVector,
-      stickers: state.stickers,
       recentHistory: recentHistory(state.songs),
     };
     try {

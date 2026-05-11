@@ -21,13 +21,13 @@ export type EpisodeSeed = {
 export const featured: EpisodeSeed = {
   id: '01HZ7Q4COVERSTORY',
   number: 14,
-  title: 'Walking home, rain starting, three stickers deep',
+  title: 'Walking home, rain starting, sub-bass blooming',
   byline: 'a stranger in Berlin',
   dateline: 'Apr 24 · 2026',
   runtimeMin: 24,
   trace: 'rain',
   annotation:
-    'fig. 1 · accelerometer rising at 18.42, weather flips to drizzle at 18.46, 🌧️ at 18.47.',
+    'fig. 1 · accelerometer rising at 18.42, weather flips to drizzle at 18.46, classified on_foot_street at 18.47.',
   cosmicWord: 'kindling',
 }
 
@@ -40,7 +40,7 @@ export const archive: EpisodeSeed[] = [
     dateline: 'Apr 21 · 2026',
     runtimeMin: 41,
     trace: 'still',
-    annotation: 'fig. 2 · overcast, low motion, two stickers across two hours.',
+    annotation: 'fig. 2 · overcast, low motion, library mood for two hours.',
   },
   {
     id: '01HZ7Q6BUSGOLD',
@@ -61,7 +61,7 @@ export const archive: EpisodeSeed[] = [
     runtimeMin: 9,
     trace: 'walking',
     annotation:
-      'fig. 4 · accelerometer periodicity 2.8 Hz, pressure dropping, ⚡️ × 2.',
+      'fig. 4 · accelerometer periodicity 2.8 Hz, pressure dropping, thunderstorm-condition mood pull.',
   },
   {
     id: '01HZ7Q8WINDOWREAD',
@@ -83,6 +83,6 @@ export const archive: EpisodeSeed[] = [
     runtimeMin: 27,
     trace: 'gold',
     annotation:
-      'fig. 6 · coastal placeType, golden phase, walking pattern, steady.',
+      'fig. 6 · beach_or_coast location, golden_hour phase, walking pattern, steady.',
   },
 ]

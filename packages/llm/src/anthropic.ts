@@ -1,6 +1,7 @@
 import type {
   ClaudePromptJson,
   Composition,
+  LocationType,
   SongMetadata,
 } from '@hero-syndrome/shared';
 
@@ -10,25 +11,37 @@ const ANTHROPIC_VERSION = '2023-06-01';
 
 const COMPOSE_SYSTEM_PROMPT = `You are composing a film score for this person's life, one song at a time, by calling the \`compose_song\` tool exactly once per turn.
 
-Each user message has two sections separated by Markdown headers:
+The user message is a JSON object describing the world state and the *stacked numeric meta* that has already resolved this moment into musical coordinates. Compose around that meta — do not contradict it.
 
-1. **\`# Musical scaffolding\`** — the deterministic musical picks (tempo, key, instrumentation base, day accent, weather-driven timbres, reverb, dynamics, articulation, phrase shape, threshold accents) chosen for this song from a quantum-driven schema. One line per element. Honor every line. Treat the scaffolding as a constellation, not a recipe — you choose section count, transitions, intros/outros, modal flavoring within the chosen key, and the dynamic arc within the dynamic range.
+The JSON keys:
 
-2. **\`# Present moment\`** — a JSON object describing the world state right now. Use it to color prose and intent, never to override the scaffolding.
-
-The JSON object's keys:
-- \`state\`: \`time\`, \`body\` (activity, motion, intensity), \`location\` (\`placeType\` bucket, \`place.type\` raw OSM kind, \`place.name\` proper name when one exists, \`city\`, \`country\`, \`nearby\` points of interest), and \`weather\`.
-- \`userInput\`: direct inputs the listener has placed on the score (currently always empty).
-- \`vibes\`: distillations of the moment.
-  - \`wordOfTheMoment\`: a single word drawn today from particle-radiation flux, projected into a daily-rotated vocabulary.
-  - \`phraseOfTheMoment\`: a two-part phrase (a material and a force, e.g. "humming copper wire") drawn from open texts and conditioned on current space weather.
-- \`recentHistory\`: the previous few songs as \`{ metadata, measuredFeatures? }\`. \`measuredFeatures\` reflects what the audio actually sounded like; trust it over \`metadata\` when they disagree.
+- \`state\`: clock (\`time.phase\`, \`time.dayOfWeek\`, \`time.hour\`), \`moonPhase\`, optional \`body.activity\` (still | walking | running | vehicle), optional \`location\` (one of 50 \`type\` ids plus the raw reverse-geocode hints \`place\`, \`city\`, \`country\`, \`nearby\`), and optional \`weather\`.
+- \`stacked\`: the canonical meta after all modifier stacking.
+  - \`energy\`: four axes \`motion\`, \`density\`, \`tension\`, \`brightness\` in [0,1] — read as numeric pressure on the score.
+  - \`mood\`: tag → weight (0..1). Higher weight ⇒ stronger pull. Top 4–6 tags should color the prose.
+  - \`inspiration.world\` and optional \`inspiration.worldSecondary\` — world ids from \`lexicon.worlds\`.
+  - \`inspiration.textureKeys\` — texture cue ids from \`lexicon.textures\`.
+  - \`tideEffective\` — the moon's tide multiplier on emotional dynamics; > 1 widens, < 1 compresses.
+  - \`weatherCondition\`, \`timePhase\`, \`moonPhase\` — echoed for convenience.
+- \`renderPlan.bpm\` — the BPM to target. Use this number (or a narrow band around it) explicitly in the metadata and in the section prompts.
+- \`renderPlan.totalDurationMs\` — total clip length in ms (typically 60000). Section durations sum to this.
+- \`lexicon\`: authored vocabulary for this song. Each entry is a phrase pool you can quote or recombine.
+  - \`product_positives\` / \`product_negatives\` — required anchors / blockers.
+  - \`worlds[worldId]\`, \`textures[textureKey]\`, \`moods[moodTag]\` — pools keyed by the ids in \`stacked\`.
+  - \`weather.scene\` + \`weather.texture_hints\` — pools for the active weather condition.
+  - \`moon_undertow\` — slow-bias phrases for the active moon phase.
+  - \`moon_tide_dynamics.{high_spring|mid|low_neap}\` — pick the bucket matching \`tideEffective\`.
+  - \`day\` — day-of-week flavor.
+  - optional \`body\`, \`location\` — pools for body activity and classified location type.
+  - \`negatives_fixed\` — anti-prompts to fold into negative styles.
+- \`vibes.phraseOfTheMoment\` — an optional two-word phrase distilled from space weather. Use as flavor, not directive.
+- \`recentHistory\` — the previous few songs as \`{ metadata, measuredFeatures? }\`. Trust \`measuredFeatures\` over \`metadata\` when they disagree.
 
 The \`compose_song\` tool returns:
-- \`metadata\`: BPM range, key, intensity, instrumentation, genre tags, and \`transitionIntent\` (\`continue\` | \`evolve\` | \`shift\` | \`break\`). For downstream continuity; the music engine never sees it.
-- \`composition\`: the plan sent verbatim to the music engine. An \`overallPrompt\` and **1 or 2 sections summing to exactly 60 seconds**. Each clip is a short 60-second gesture that crossfades into the next, not a full song — write prompts that establish a mood quickly and resolve quickly. Section prompts must explicitly embed the metadata values — BPM (or a narrow range), key/mode, lead instrumentation, and intensity descriptor — so metadata and section prompts agree.
+- \`metadata\`: bpmRange (band around \`renderPlan.bpm\`), key, intensity (≈ \`stacked.energy.tension\` or \`motion\` depending on your read), instrumentation, genreTags, transitionIntent (continue | evolve | shift | break).
+- \`composition\`: overallPrompt + 1 or 2 sections summing to exactly 60 seconds. Each clip is a short 60-second gesture that crossfades into the next, not a full song. Each section prompt must explicitly embed BPM, key, lead instrumentation, and an intensity descriptor so metadata and prose agree.
 
-Instrumental only — no lyrics, no vocal lines.`;
+Instrumental only — no lyrics, no vocal lines. Draw from the lexicon vocabulary in your prose so this song sounds like the spec's voice, not generic AI prose.`;
 
 const COMPOSE_TOOL = {
   name: 'compose_song',
@@ -44,7 +57,7 @@ const COMPOSE_TOOL = {
             items: { type: 'number' },
             minItems: 2,
             maxItems: 2,
-            description: '[low, high] BPM, e.g. [60, 72]',
+            description: '[low, high] BPM, centered on renderPlan.bpm',
           },
           key: {
             type: 'string',
@@ -96,14 +109,7 @@ const COMPOSE_TOOL = {
 
 export interface ComposeSongInput {
   apiKey: string;
-  /** Pre-built JSON to embed verbatim in the user message. Built by
-   *  `buildClaudePromptJson` from the raw state, cosmic snapshot, and
-   *  recent history. */
   promptJson: ClaudePromptJson;
-  /** Optional directorial block — paragraph prose that lists the
-   *  quantum-driven musical-schema picks for this song. Appended after the
-   *  JSON in the user message. */
-  directorialBlock?: string;
 }
 
 export interface ComposeSongResult {
@@ -189,16 +195,10 @@ function validateComposeSongInput(value: unknown): asserts value is { metadata: 
 }
 
 export async function composeSong(input: ComposeSongInput): Promise<ComposeSongResult> {
-  const jsonPart = JSON.stringify(input.promptJson, null, 2);
-  const userMessage = input.directorialBlock
-    ? `${input.directorialBlock}\n\n# Present moment\n\n${jsonPart}`
-    : jsonPart;
+  const userMessage = JSON.stringify(input.promptJson, null, 2);
 
   const requestBody = {
     model: MODEL,
-    // Effectively unlimited (Haiku 4.5 ceiling). The API requires the field
-    // but we never want output truncation here — it silently corrupts the
-    // tool-call JSON.
     max_tokens: 64000,
     temperature: 0.7,
     system: [
@@ -244,8 +244,108 @@ export async function composeSong(input: ComposeSongInput): Promise<ComposeSongR
   }
 }
 
+// ============================================================================
+// Location classification — one Claude Haiku call per song, classifies the
+// reverse-geocode hints into one of 50 LocationType ids. See LOCATION_TYPES
+// constant for the universe of values.
+// ============================================================================
+
+const LOCATION_TYPES_ALL: LocationType[] = [
+  'home_interior', 'home_garden',
+  'office', 'co_working_space',
+  'factory_or_warehouse', 'construction_site',
+  'retail_shop', 'shopping_mall', 'supermarket', 'outdoor_market',
+  'cafe', 'restaurant', 'bar_or_pub', 'nightclub', 'fast_food', 'food_truck_or_street_food',
+  'train_station', 'bus_station', 'airport', 'subway_or_metro', 'tunnel_or_underpass',
+  'on_foot_street', 'highway_or_motorway', 'parking_lot_or_garage',
+  'park_urban', 'plaza_or_public_square', 'rooftop', 'alleyway_or_back_street',
+  'park_large_natural', 'forest_or_woods', 'mountain_or_hills',
+  'beach_or_coast', 'river_or_lake', 'ocean_or_open_water',
+  'desert_or_arid_land', 'field_or_meadow', 'cave_or_underground',
+  'museum_or_gallery', 'library', 'theatre_or_cinema', 'concert_venue', 'stadium_or_arena',
+  'gym_or_fitness',
+  'school_or_university', 'hospital_or_clinic', 'government_building',
+  'place_of_worship', 'historic_site',
+  'rural_settlement', 'wilderness_or_remote',
+];
+
+const LOCATION_CLASSIFY_SYSTEM_PROMPT = `You classify a real-world place into ONE id from a fixed 50-option taxonomy.
+
+Read the supplied reverse-geocode hints (Nominatim place/road/city, OSM category/type, nearby POIs) and reply with the SINGLE best-fit id. If genuinely ambiguous, prefer the broader/catch-all category (\`retail_shop\` for any small business, \`home_interior\` for any dwelling including hotels, \`on_foot_street\` for generic urban pedestrian). If no information is usable, reply \`unknown\`.
+
+Reply with ONLY the id — no quotes, no punctuation, no commentary.
+
+Valid ids:
+${LOCATION_TYPES_ALL.join('\n')}
+unknown`;
+
+export interface ClassifyLocationInput {
+  apiKey: string;
+  /** The hints from the worker's reverseGeocode call. */
+  geocode: {
+    place?: { category: string; type: string; name?: string };
+    road?: { class: string; name?: string };
+    neighborhood?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+  };
+  /** Optional list of nearby POIs (also Nominatim shape) for disambiguation. */
+  nearby?: Array<{ category: string; type: string; name?: string; distanceM: number }>;
+}
+
+export interface ClassifyLocationResult {
+  locationType: LocationType;
+  latencyMs: number;
+  usage: { input_tokens: number; output_tokens: number };
+}
+
+export async function classifyLocation(
+  input: ClassifyLocationInput,
+): Promise<ClassifyLocationResult> {
+  const payload = {
+    geocode: input.geocode,
+    ...(input.nearby && input.nearby.length > 0 ? { nearby: input.nearby.slice(0, 8) } : {}),
+  };
+  const userMessage = `Classify this location:\n${JSON.stringify(payload)}`;
+
+  const requestBody = {
+    model: MODEL,
+    max_tokens: 40,
+    temperature: 0,
+    system: [
+      {
+        type: 'text',
+        text: LOCATION_CLASSIFY_SYSTEM_PROMPT,
+        cache_control: { type: 'ephemeral' as const },
+      },
+    ],
+    messages: [{ role: 'user' as const, content: userMessage }],
+  };
+
+  const { data, latencyMs } = await callAnthropic(requestBody, input.apiKey);
+  let text = '';
+  for (const block of data.content ?? []) {
+    if (block?.type === 'text' && typeof block.text === 'string') text += block.text;
+  }
+  const cleaned = text.trim().toLowerCase().replace(/[^a-z_]/g, '');
+  const valid = new Set<string>([...LOCATION_TYPES_ALL, 'unknown']);
+  const locationType: LocationType = valid.has(cleaned)
+    ? (cleaned as LocationType)
+    : 'unknown';
+
+  return {
+    locationType,
+    latencyMs,
+    usage: {
+      input_tokens: data.usage?.input_tokens ?? 0,
+      output_tokens: data.usage?.output_tokens ?? 0,
+    },
+  };
+}
+
 const TITLE_SYSTEM_PROMPT = `You are titling an episode of someone's life.
-Read the timeline of signal changes, stickers, song characters, and the session's cosmic snapshot below, and produce a single title:
+Read the timeline of signal changes, song characters, and the session's cosmic snapshot below, and produce a single title:
 - 4-10 words
 - evocative, slightly off-kilter
 - no quotes, no period at the end

@@ -2,9 +2,17 @@ export {
   composeSong,
   generateTitle,
   rateEvocativenessBatch,
+  classifyLocation,
   AnthropicError,
 } from './anthropic';
-export type { ComposeSongInput, ComposeSongResult, TitleInput, EvocativenessBatchInput } from './anthropic';
+export type {
+  ComposeSongInput,
+  ComposeSongResult,
+  TitleInput,
+  EvocativenessBatchInput,
+  ClassifyLocationInput,
+  ClassifyLocationResult,
+} from './anthropic';
 
 export { buildClaudePromptJson } from './transform';
 export type { BuildPromptInput } from './transform';

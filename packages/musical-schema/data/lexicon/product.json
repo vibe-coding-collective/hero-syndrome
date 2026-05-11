@@ -1,0 +1,19 @@
+{
+  "instrumental_positives": [
+    "instrumental only",
+    "no vocals",
+    "purely instrumental arrangement",
+    "ambient instrumental score"
+  ],
+  "instrumental_negatives": [
+    "vocals",
+    "singing",
+    "lyrics",
+    "speech",
+    "voiceover",
+    "choir",
+    "humming",
+    "rap",
+    "spoken word"
+  ]
+}

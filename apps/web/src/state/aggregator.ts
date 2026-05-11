@@ -15,7 +15,6 @@ export class StateAggregator {
   private timer: number | null = null;
   private running = false;
   private firstTickResolve: (() => void) | null = null;
-  /** Resolves once the aggregator has produced its first complete StateVector. */
   readonly firstTick: Promise<void>;
 
   constructor(motion: MotionSensor, geo: GeolocationSensor) {
@@ -59,13 +58,11 @@ export class StateAggregator {
     if (geo) {
       sv.location = {
         speedMps: geo.speedMps,
-        motionClass: motionReading.motionClass,
-        placeType: 'unknown',
+        bodyActivity: motionReading.bodyActivity,
       };
 
       try {
         const geocode = await getGeocode(geo.lat, geo.lon);
-        sv.location.placeType = geocode.placeType;
         if (geocode.place) sv.location.place = geocode.place;
         if (geocode.road) sv.location.road = geocode.road;
         if (geocode.neighborhood) sv.location.neighborhood = geocode.neighborhood;
