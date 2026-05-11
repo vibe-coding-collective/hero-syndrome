@@ -26,7 +26,7 @@ The JSON object's keys:
 
 The \`compose_song\` tool returns:
 - \`metadata\`: BPM range, key, intensity, instrumentation, genre tags, and \`transitionIntent\` (\`continue\` | \`evolve\` | \`shift\` | \`break\`). For downstream continuity; the music engine never sees it.
-- \`composition\`: the plan sent verbatim to the music engine. An \`overallPrompt\` and 1–30 sections (each 3–120 s, summing to 3 s–10 min). Section prompts must explicitly embed the metadata values — BPM (or a narrow range), key/mode, lead instrumentation, and intensity descriptor — so metadata and section prompts agree.
+- \`composition\`: the plan sent verbatim to the music engine. An \`overallPrompt\` and **1 or 2 sections summing to exactly 60 seconds**. Each clip is a short 60-second gesture that crossfades into the next, not a full song — write prompts that establish a mood quickly and resolve quickly. Section prompts must explicitly embed the metadata values — BPM (or a narrow range), key/mode, lead instrumentation, and intensity descriptor — so metadata and section prompts agree.
 
 Instrumental only — no lyrics, no vocal lines.`;
 
@@ -74,12 +74,13 @@ const COMPOSE_TOOL = {
           sections: {
             type: 'array',
             minItems: 1,
-            maxItems: 30,
+            maxItems: 2,
+            description: 'One or two sections whose durationSec values sum to exactly 60.',
             items: {
               type: 'object',
               properties: {
                 label: { type: 'string' },
-                durationSec: { type: 'number', minimum: 3, maximum: 120 },
+                durationSec: { type: 'number', minimum: 15, maximum: 60 },
                 prompt: { type: 'string' },
               },
               required: ['label', 'durationSec', 'prompt'],

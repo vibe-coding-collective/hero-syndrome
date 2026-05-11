@@ -27,7 +27,16 @@ export interface RenderCompositionResult {
   totalLatencyMs: number;
 }
 
+const TARGET_CLIP_SEC = 60;
+
 function compositionToCompositionPlan(c: Composition) {
+  // Rescale section durations so the total is exactly TARGET_CLIP_SEC. The
+  // Claude tool schema constrains each section to 15-60s and limits the
+  // sections array to 1-2 entries, but the model can still emit a sum that
+  // drifts from 60s; rescaling proportionally preserves the model's intent
+  // while pinning the clip length the audio engine expects.
+  const rawTotal = c.sections.reduce((acc, s) => acc + s.durationSec, 0);
+  const scale = rawTotal > 0 ? TARGET_CLIP_SEC / rawTotal : 1;
   return {
     positive_global_styles: [c.overallPrompt],
     negative_global_styles: [
@@ -39,7 +48,7 @@ function compositionToCompositionPlan(c: Composition) {
     ],
     sections: c.sections.map((s) => ({
       section_name: s.label,
-      duration_ms: Math.round(s.durationSec * 1000),
+      duration_ms: Math.round(s.durationSec * scale * 1000),
       positive_local_styles: [s.prompt],
       negative_local_styles: ['lyrics', 'vocals'],
       lines: [],
@@ -62,6 +71,9 @@ export async function renderComposition(input: RenderCompositionInput): Promise<
     body: JSON.stringify({
       composition_plan: compositionPlan,
       output_format: 'mp3_44100_128',
+      // Let ElevenLabs adjust section boundaries within the total duration;
+      // improves latency and quality on short clips per the API docs.
+      respect_sections_durations: false,
     }),
     signal: input.signal,
   });

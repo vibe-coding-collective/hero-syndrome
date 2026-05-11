@@ -20,7 +20,7 @@ interface QueuedSlot {
   songId: string;
 }
 
-const RAMP_SEC = 1.5;
+const RAMP_SEC = 5;
 const DEFAULT_LEAD_SEC = 90;
 const TAIL_LOOP_CAP_MS = 10_000;
 
@@ -58,6 +58,13 @@ export class AudioEngine {
    * a user-gesture handler. iOS Safari's autoplay rules require this to
    * "unlock" Web Audio for the lifetime of the page; without it, fetches
    * resolve but `decodeAudioData` and source playback hang forever.
+   *
+   * Also starts a permanently-running zero-gain oscillator so Chrome can't
+   * decide the graph is idle and reclaim it during the 30+ second wait
+   * before song 1 arrives. (Empty preludes manifest = the user clicks
+   * "Begin scene" and then nothing audible happens until ElevenLabs
+   * returns; a context with no scheduled output across that window has
+   * been observed to drop the first real song silently.)
    */
   static unlockedContext(): AudioContext {
     const Ctor = (window.AudioContext ?? (window as any).webkitAudioContext) as typeof AudioContext;
@@ -71,6 +78,15 @@ export class AudioEngine {
     src.buffer = empty;
     src.connect(ctx.destination);
     try { src.start(0); } catch { /* ignore */ }
+
+    const keepAliveOsc = ctx.createOscillator();
+    keepAliveOsc.frequency.value = 1;
+    const keepAliveGain = ctx.createGain();
+    keepAliveGain.gain.value = 0;
+    keepAliveOsc.connect(keepAliveGain);
+    keepAliveGain.connect(ctx.destination);
+    try { keepAliveOsc.start(0); } catch { /* ignore */ }
+
     return ctx;
   }
 

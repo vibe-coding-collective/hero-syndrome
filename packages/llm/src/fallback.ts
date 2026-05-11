@@ -54,11 +54,10 @@ export function ruleTableComposition(input: FallbackInput): FallbackResult {
     Math.round(palette.bpm[1] + intensity * 18),
   ];
 
-  const overallPrompt = `An instrumental composition for ${phase}, ${intensityWord} intensity, ${condition} weather, in or around a ${placeType} place. ${stickerHint} Lead instruments: ${palette.instrumentation.join(', ')}. Key: ${palette.key}. BPM range ${bpm[0]}-${bpm[1]}.`;
+  const overallPrompt = `A 60-second instrumental gesture for ${phase}, ${intensityWord} intensity, ${condition} weather, in or around a ${placeType} place. ${stickerHint} Lead instruments: ${palette.instrumentation.join(', ')}. Key: ${palette.key}. BPM range ${bpm[0]}-${bpm[1]}.`;
 
-  const intro = `Slow ${palette.instrumentation[0]} introduction in ${palette.key}, BPM ${bpm[0]}, ${intensityWord} energy, no drums.`;
-  const middle = `Develop the theme. Add ${palette.instrumentation[1] ?? 'subtle pad'}, BPM ${Math.round((bpm[0] + bpm[1]) / 2)}. ${intensityWord} intensity. ${condition} weather flavoring.`;
-  const outro = `Soft outro, ${palette.instrumentation[0]} alone, BPM ${bpm[0]}, fading.`;
+  const opening = `${palette.instrumentation[0]} in ${palette.key}, BPM ${bpm[0]}-${bpm[1]}, ${intensityWord} energy. ${condition} weather flavoring. Establish the mood within the first few seconds; no long intro.`;
+  const close = `Resolve the gesture with ${palette.instrumentation[1] ?? palette.instrumentation[0]} settling, BPM ${Math.round((bpm[0] + bpm[1]) / 2)}, leaving room for a crossfade into the next clip.`;
 
   return {
     metadata: {
@@ -72,9 +71,8 @@ export function ruleTableComposition(input: FallbackInput): FallbackResult {
     composition: {
       overallPrompt,
       sections: [
-        { label: 'intro', durationSec: 40, prompt: intro },
-        { label: 'middle', durationSec: 110, prompt: middle },
-        { label: 'outro', durationSec: 40, prompt: outro },
+        { label: 'opening', durationSec: 35, prompt: opening },
+        { label: 'close', durationSec: 25, prompt: close },
       ],
     },
   };
