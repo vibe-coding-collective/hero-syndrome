@@ -7,6 +7,7 @@
     background: #f4efe3;
     color: #1b1b19;
   }
+
   body {
     font-family: 'Fraunces', Georgia, serif;
     font-feature-settings: 'ss01', 'kern';
@@ -14,6 +15,7 @@
     -moz-osx-font-smoothing: grayscale;
     font-variation-settings: 'opsz' 14, 'SOFT' 50;
   }
+
   ::selection {
     background: #b85a2e;
     color: #f4efe3;
@@ -25,10 +27,389 @@
     font-variant-caps: all-small-caps;
     letter-spacing: 0.16em;
   }
+
   .display {
     font-variation-settings: 'opsz' 144, 'SOFT' 30;
   }
+
   .body-serif {
     font-variation-settings: 'opsz' 14, 'SOFT' 50;
+  }
+}
+
+@layer components {
+  .phone-dial {
+    position: relative;
+    width: 393px;
+    height: 852px;
+    max-width: 100vw;
+    max-height: 100vh;
+    aspect-ratio: 393 / 852;
+    overflow: hidden;
+    background: #90b5d0;
+    box-shadow: 0 28px 80px rgba(0, 0, 0, 0.36);
+    touch-action: none;
+    user-select: none;
+  }
+
+  .phone-dial--night {
+    background: #080b1d;
+  }
+
+  .phone-dial__artboard {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    transition: filter 380ms ease, opacity 380ms ease, transform 380ms ease;
+  }
+
+  .phone-dial__artboard--selection-open {
+    filter: blur(10px);
+    opacity: 0.88;
+    transform: scale(1.01);
+  }
+
+  .phone-dial__state-label {
+    fill: #11161f;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 1.1px;
+    dominant-baseline: middle;
+    pointer-events: none;
+  }
+
+  .phone-dial__artboard--night .phone-dial__state-label {
+    fill: rgba(238, 239, 255, 0.92);
+  }
+
+  .phone-dial__sun-orbit {
+    opacity: 0.42;
+    stroke: #fff;
+    stroke-dasharray: 2 5;
+    stroke-linecap: round;
+    stroke-width: 2;
+  }
+
+  .phone-dial__horizon-line {
+    opacity: 0.46;
+    stroke: #fff;
+    stroke-linecap: round;
+    stroke-width: 1.4;
+  }
+
+  .phone-dial__horizon-marker {
+    fill: rgba(255, 255, 255, 0.78);
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    font-size: 8px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    pointer-events: none;
+  }
+
+  .phone-dial__clock-marks {
+    opacity: 0.42;
+    stroke: #11161f;
+    stroke-width: 1.5;
+  }
+
+  .phone-dial__clock-marks .is-major {
+    stroke-width: 2.4;
+  }
+
+  .phone-dial__artboard--night .phone-dial__clock-marks {
+    opacity: 0.55;
+    stroke: rgba(238, 239, 255, 0.76);
+  }
+
+  .phone-dial__artboard--night .phone-dial__sun-orbit,
+  .phone-dial__artboard--night .phone-dial__horizon-line {
+    opacity: 0.5;
+    stroke: rgba(238, 239, 255, 0.78);
+  }
+
+  .phone-dial__sun-indicator {
+    pointer-events: none;
+  }
+
+  .phone-dial__sun-glow {
+    fill: rgba(246, 144, 39, 0.24);
+    filter: drop-shadow(0 0 13px rgba(241, 112, 28, 0.72));
+  }
+
+  .phone-dial__sun-disc {
+    fill: #f08a25;
+  }
+
+  .phone-dial__sun-grain {
+    fill: rgba(213, 88, 22, 0.58);
+  }
+
+  .phone-dial__moon-indicator {
+    pointer-events: none;
+  }
+
+  .phone-dial__moon-glow {
+    fill: rgba(180, 191, 255, 0.18);
+    filter: drop-shadow(0 0 14px rgba(166, 183, 255, 0.48));
+  }
+
+  .phone-dial__moon-disc {
+    fill: #f1f1ff;
+  }
+
+  .phone-dial__moon-shadow {
+    fill: #1d2444;
+  }
+
+  .phone-dial__moon-speck {
+    fill: rgba(186, 190, 222, 0.8);
+  }
+
+  .phone-dial__stars {
+    fill: rgba(239, 242, 255, 0.75);
+    pointer-events: none;
+  }
+
+  .phone-dial__night-weather {
+    fill: rgba(238, 239, 255, 0.86);
+    opacity: 0.95;
+    pointer-events: none;
+  }
+
+  .phone-dial__night-weather .phone-dial__moon-cutout {
+    fill: #151a36;
+  }
+
+  .phone-dial__night-weather .phone-dial__star {
+    fill: rgba(238, 239, 255, 0.9);
+  }
+
+  .phone-dial__selection-label {
+    fill: rgba(255, 255, 255, 0.88);
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    font-size: 8.9px;
+    font-weight: 500;
+    letter-spacing: 0.7px;
+    dominant-baseline: middle;
+  }
+
+  .phone-dial__arc-button {
+    cursor: pointer;
+  }
+
+  .phone-dial__arc-button text {
+    pointer-events: none;
+  }
+
+  .phone-dial__button-arc-fill {
+    fill: rgba(32, 0, 0, 0.4);
+  }
+
+  .phone-dial__button-hit-area {
+    fill: transparent;
+    pointer-events: all;
+  }
+
+  .phone-dial__confirm-hit-area {
+    fill: transparent;
+    pointer-events: all;
+  }
+
+  .phone-dial__material-label {
+    fill: #050506;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    font-size: 13.6px;
+    font-weight: 500;
+    letter-spacing: 1.3px;
+    dominant-baseline: middle;
+    text-anchor: middle;
+    pointer-events: none;
+  }
+
+  .phone-dial__material-label--bottom {
+    font-size: 12.2px;
+    letter-spacing: 0.65px;
+  }
+
+  .phone-dial__run-label {
+    fill: rgba(255, 255, 255, 0.9);
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    font-size: 8.9px;
+    font-weight: 500;
+    letter-spacing: 0.7px;
+    dominant-baseline: middle;
+    text-anchor: middle;
+  }
+
+  .phone-dial__center-orb-shell {
+    width: 111px;
+    height: 111px;
+    overflow: hidden;
+    border-radius: 999px;
+    background:
+      radial-gradient(circle at 42% 36%, rgba(255, 255, 255, 0.48), transparent 28%),
+      radial-gradient(circle, rgba(205, 226, 247, 0.95), rgba(107, 137, 172, 0.86) 64%, rgba(46, 54, 75, 0.74));
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.5),
+      inset 0 -10px 18px rgba(18, 28, 48, 0.28),
+      0 10px 22px rgba(37, 45, 57, 0.28);
+    pointer-events: none;
+  }
+
+  .phone-dial__orb-canvas {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border-radius: inherit;
+  }
+
+  .phone-dial__orb-canvas canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .phone-dial__data-readouts {
+    fill: rgba(17, 22, 31, 0.72);
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    font-size: 8.5px;
+    font-weight: 650;
+    letter-spacing: 0.08em;
+    pointer-events: none;
+  }
+
+  .phone-dial__artboard--night .phone-dial__data-readouts {
+    fill: rgba(238, 239, 255, 0.82);
+  }
+
+  .phone-dial__live-controls {
+    position: absolute;
+    right: 18px;
+    bottom: calc(54px + env(safe-area-inset-bottom));
+    z-index: 12;
+    display: grid;
+    justify-items: end;
+    gap: 5px;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  }
+
+  .phone-dial__live-button {
+    min-width: 92px;
+    min-height: 36px;
+    border: 1px solid rgba(255, 255, 255, 0.44);
+    border-radius: 999px;
+    background: rgba(18, 20, 31, 0.48);
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 18px rgba(12, 14, 24, 0.2);
+    touch-action: manipulation;
+  }
+
+  .phone-dial__live-button:disabled {
+    opacity: 0.76;
+  }
+
+  .phone-dial__permission-label {
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 7.5px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.28);
+  }
+
+  .phone-dial__orbit-hit-area {
+    cursor: grab;
+  }
+
+  .phone-dial__artboard:active .phone-dial__orbit-hit-area {
+    cursor: grabbing;
+  }
+
+  .phone-dial__location-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    background:
+      linear-gradient(180deg, rgba(94, 75, 164, 0.22), rgba(58, 45, 118, 0.2)),
+      rgba(92, 66, 140, 0.18);
+    backdrop-filter: blur(14px) saturate(0.88);
+    animation: phone-dial-selection-in 360ms cubic-bezier(0.18, 0.82, 0.22, 1) both;
+    touch-action: none;
+  }
+
+  .phone-dial__location-artboard {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+  }
+
+  .phone-dial__location-list text {
+    fill: rgba(0, 0, 0, 0.82);
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    font-size: 9.6px;
+    font-weight: 500;
+    letter-spacing: 0.75px;
+  }
+
+  .phone-dial__location-list .is-selected .phone-dial__location-option-label {
+    opacity: 0;
+  }
+
+  .phone-dial__location-separator {
+    fill: rgba(0, 0, 0, 0.62);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0;
+  }
+
+  .phone-dial__location-confirm {
+    cursor: pointer;
+  }
+
+  .phone-dial__location-confirm image,
+  .phone-dial__location-confirm text {
+    pointer-events: none;
+  }
+
+  .phone-dial__location-selected {
+    fill: rgba(255, 255, 255, 0.92);
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    font-size: 10.2px;
+    font-weight: 650;
+    letter-spacing: 0.75px;
+    text-anchor: middle;
+  }
+
+  @keyframes phone-dial-selection-in {
+    from {
+      opacity: 0;
+      transform: scale(1.015);
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @media (max-width: 392px) {
+    .phone-dial {
+      width: 100vw;
+      height: calc(100vw * 852 / 393);
+    }
+  }
+
+  @media (max-height: 851px) and (min-aspect-ratio: 393 / 852) {
+    .phone-dial {
+      width: calc(100vh * 393 / 852);
+      height: 100vh;
+    }
   }
 }

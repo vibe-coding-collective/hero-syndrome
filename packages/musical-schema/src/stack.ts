@@ -2,7 +2,6 @@ import type {
   BodyActivity,
   DayOfWeek,
   LocationType,
-  TimePhase,
   WeatherCondition,
 } from '@hero-syndrome/shared';
 import {

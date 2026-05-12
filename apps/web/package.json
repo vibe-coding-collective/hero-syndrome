@@ -11,9 +11,14 @@
   },
   "dependencies": {
     "@hero-syndrome/shared": "workspace:*",
+    "@hero-syndrome/musical-schema": "workspace:*",
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.17.10",
+    "@types/three": "^0.170.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.28.0",
+    "three": "^0.170.0",
     "ulid": "^2.3.0",
     "zustand": "^5.0.2"
   },
