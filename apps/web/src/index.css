@@ -118,9 +118,70 @@
     stroke-width: 2.4;
   }
 
+  .phone-dial__music-progress {
+    pointer-events: none;
+  }
+
+  .phone-dial__music-progress-backing,
+  .phone-dial__music-progress-track,
+  .phone-dial__music-progress-fill {
+    stroke-linecap: butt;
+    stroke-linejoin: round;
+  }
+
+  .phone-dial__music-progress-backing {
+    stroke: rgba(17, 22, 31, 0.2);
+    stroke-width: 26px;
+  }
+
+  .phone-dial__music-progress-track,
+  .phone-dial__music-progress-fill {
+    stroke-width: 15px;
+  }
+
+  .phone-dial__music-progress-track {
+    stroke: rgba(222, 229, 232, 0.76);
+  }
+
+  .phone-dial__music-progress-fill {
+    stroke: rgba(54, 63, 72, 0.68);
+    transition:
+      stroke 220ms ease,
+      opacity 220ms ease;
+    filter: drop-shadow(0 1px 3px rgba(20, 24, 32, 0.18));
+  }
+
+  .phone-dial__music-progress--loading .phone-dial__music-progress-fill {
+    stroke: rgba(65, 74, 83, 0.78);
+  }
+
+  .phone-dial__music-progress--playback .phone-dial__music-progress-fill {
+    stroke: rgba(45, 54, 63, 0.8);
+  }
+
   .phone-dial__artboard--night .phone-dial__clock-marks {
     opacity: 0.55;
     stroke: rgba(238, 239, 255, 0.76);
+  }
+
+  .phone-dial__artboard--night .phone-dial__music-progress-track {
+    stroke: rgba(198, 205, 224, 0.2);
+  }
+
+  .phone-dial__artboard--night .phone-dial__music-progress-backing {
+    stroke: rgba(4, 7, 18, 0.32);
+  }
+
+  .phone-dial__artboard--night .phone-dial__music-progress-fill {
+    stroke: rgba(217, 222, 239, 0.62);
+  }
+
+  .phone-dial__artboard--night .phone-dial__music-progress--loading .phone-dial__music-progress-fill {
+    stroke: rgba(217, 222, 239, 0.68);
+  }
+
+  .phone-dial__artboard--night .phone-dial__music-progress--playback .phone-dial__music-progress-fill {
+    stroke: rgba(238, 239, 255, 0.78);
   }
 
   .phone-dial__artboard--night .phone-dial__sun-orbit,
@@ -243,11 +304,24 @@
     text-anchor: middle;
   }
 
+  .phone-dial__center-orb,
+  .phone-dial__center-orb-object {
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .phone-dial__center-orb-object {
+    clip-path: circle(55px at 55.5px 55.5px);
+  }
+
   .phone-dial__center-orb-shell {
     width: 111px;
     height: 111px;
     overflow: hidden;
     border-radius: 999px;
+    clip-path: circle(55px at 55.5px 55.5px);
+    contain: paint;
+    isolation: isolate;
     background:
       radial-gradient(circle at 42% 36%, rgba(255, 255, 255, 0.48), transparent 28%),
       radial-gradient(circle, rgba(205, 226, 247, 0.95), rgba(107, 137, 172, 0.86) 64%, rgba(46, 54, 75, 0.74));
@@ -263,12 +337,33 @@
     height: 100%;
     overflow: hidden;
     border-radius: inherit;
+    clip-path: circle(55px at 55.5px 55.5px);
   }
 
   .phone-dial__orb-canvas canvas {
     display: block;
     width: 100% !important;
     height: 100% !important;
+    clip-path: circle(55px at 55.5px 55.5px);
+  }
+
+  .phone-dial__orb-bezel-fill {
+    fill: rgba(239, 246, 249, 0.42);
+    filter: drop-shadow(0 4px 9px rgba(26, 34, 44, 0.14));
+  }
+
+  .phone-dial__orb-bezel-inner-edge {
+    stroke: rgba(255, 255, 255, 0.48);
+    stroke-width: 1.2px;
+  }
+
+  .phone-dial__artboard--night .phone-dial__orb-bezel-fill {
+    fill: rgba(200, 209, 230, 0.24);
+    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.32));
+  }
+
+  .phone-dial__artboard--night .phone-dial__orb-bezel-inner-edge {
+    stroke: rgba(238, 239, 255, 0.32);
   }
 
   .phone-dial__data-readouts {
@@ -291,11 +386,18 @@
     z-index: 12;
     display: grid;
     justify-items: end;
-    gap: 5px;
+    gap: 6px;
     font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   }
 
-  .phone-dial__live-button {
+  .phone-dial__sim-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 74px));
+    gap: 6px;
+  }
+
+  .phone-dial__live-button,
+  .phone-dial__sim-button {
     min-width: 92px;
     min-height: 36px;
     border: 1px solid rgba(255, 255, 255, 0.44);
@@ -311,7 +413,30 @@
     touch-action: manipulation;
   }
 
-  .phone-dial__live-button:disabled {
+  .phone-dial__sim-button {
+    min-width: 74px;
+    min-height: 31px;
+    padding: 0 9px;
+    font-size: 7.6px;
+    letter-spacing: 0.08em;
+  }
+
+  .phone-dial__sim-button--day {
+    background: rgba(245, 145, 45, 0.42);
+  }
+
+  .phone-dial__sim-button--night {
+    background: rgba(27, 30, 55, 0.58);
+  }
+
+  .phone-dial__sim-button--stop {
+    grid-column: 1 / -1;
+    width: 100%;
+    background: rgba(58, 62, 70, 0.6);
+  }
+
+  .phone-dial__live-button:disabled,
+  .phone-dial__sim-button:disabled {
     opacity: 0.76;
   }
 

@@ -1,4 +1,5 @@
-import { type PointerEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type PointerEvent, useEffect, useId, useMemo, useRef, useState } from 'react';
+import type { StateVector } from '@hero-syndrome/shared';
 import { dialDemoSnapshots } from '../data/dynamicDialDemo';
 import { GeolocationSensor } from '../sensors/geolocation';
 import { MotionSensor } from '../sensors/motion';
@@ -11,12 +12,11 @@ import {
   type DialOption,
   type DialOptionKind,
 } from '../prototype/dialViewModel';
-import { Orb, type AgentState } from './ui/orb';
+import { Orb } from './ui/orb';
 
 const ASSETS = {
   background: '/prototype-dial/background.png',
   outerRing: '/prototype-dial/outer-ring.svg',
-  outerShadow: '/prototype-dial/outer-shadow.svg',
   innerRing: '/prototype-dial/inner-ring.svg',
   innerCore: '/prototype-dial/inner-core.svg',
   weatherCloud: '/prototype-dial/weather-cloud.svg',
@@ -32,8 +32,12 @@ const ASSETS = {
 const FRAME = { width: 393, height: 852 };
 const DIAL_CENTER = { x: 197, y: 426 };
 const CENTER_ORB_SIZE = 111;
+const CENTER_ORB_CLIP_RADIUS = CENTER_ORB_SIZE / 2 - 0.5;
+const ORB_BEZEL_INNER_RADIUS = CENTER_ORB_SIZE / 2 - 1.5;
+const ORB_BEZEL_OUTER_RADIUS = 80.5;
 const SUN_ORBIT_RADIUS = 147;
 const OUTER_RADIUS = 181;
+const MUSIC_PROGRESS_RADIUS = OUTER_RADIUS - 6;
 const TOP_MATERIAL_LABEL_RADIUS = 66;
 const BOTTOM_MATERIAL_LABEL_RADIUS = 66;
 const LOCATION_LABEL_RADIUS = 119;
@@ -54,6 +58,9 @@ interface SelectionDrag {
 }
 
 type LiveDataStatus = 'demo' | 'starting' | 'live' | 'error';
+type MusicProgressMode = 'idle' | 'loading' | 'playback';
+type SimulationKind = 'day' | 'night';
+type SimulationStatus = 'idle' | 'loading' | 'playing' | 'missing' | 'blocked' | 'complete';
 
 interface LiveDataRuntime {
   aggregator: StateAggregator;
@@ -61,8 +68,147 @@ interface LiveDataRuntime {
   motion: MotionSensor;
 }
 
+interface SimulatedPlayback {
+  kind: SimulationKind | null;
+  status: SimulationStatus;
+  label: string;
+  startedAt: number | null;
+  durationSec: number;
+}
+
+type AudioContextWindow = Window & { webkitAudioContext?: typeof AudioContext };
+
+const SIMULATION_AUDIO: Record<SimulationKind, string> = {
+  day: '/prototype-dial/audio/day-demo.mp3',
+  night: '/prototype-dial/audio/night-demo.mp3',
+};
+
+const SIMULATION_STATE_VECTORS: Record<SimulationKind, StateVector> = {
+  day: {
+    timestamp: '2026-05-13T13:20:00+08:00',
+    time: {
+      hour: 13,
+      phase: 'afternoon',
+      dayOfWeek: 'Wednesday',
+    },
+    weather: {
+      tempC: 28,
+      feelsLikeC: 31,
+      humidityPct: 68,
+      condition: 'clear',
+      precipitationMmHr: 0,
+      cloudCoverPct: 18,
+      windMps: 3.2,
+      isDay: true,
+      sunriseProximityMin: 440,
+      sunsetProximityMin: -300,
+    },
+    location: {
+      speedMps: 1.1,
+      bodyActivity: 'walking',
+      place: {
+        category: 'amenity',
+        type: 'cafe',
+        name: 'Sun Room Cafe',
+      },
+      road: {
+        class: 'pedestrian',
+        name: 'Garden Walk',
+      },
+      nearby: [
+        { category: 'leisure', type: 'park', name: 'Harbour Garden', distanceM: 34 },
+        { category: 'amenity', type: 'cafe', name: 'Sun Room Cafe', distanceM: 8 },
+        { category: 'shop', type: 'bakery', name: 'Morning Oven', distanceM: 52 },
+        { category: 'tourism', type: 'gallery', name: 'White Wall Space', distanceM: 88 },
+        { category: 'amenity', type: 'library', name: 'City Reading Room', distanceM: 132 },
+        { category: 'leisure', type: 'fitness_centre', name: 'Midday Studio', distanceM: 166 },
+        { category: 'railway', type: 'station', name: 'Central Station', distanceM: 248 },
+        { category: 'shop', type: 'mall', name: 'Arcade Walk', distanceM: 310 },
+      ],
+      neighborhood: 'Central',
+      city: 'Hong Kong',
+      country: 'Hong Kong',
+      countryCode: 'HK',
+    },
+    movement: {
+      intensityNormalized: 0.36,
+      pattern: 'steady',
+    },
+    cosmic: {
+      spaceWeather: {
+        kIndex: 2,
+        solarWindSpeedKmS: 382,
+        solarWindDensity: 4.8,
+      },
+    },
+  },
+  night: {
+    timestamp: '2026-05-13T22:45:00+08:00',
+    time: {
+      hour: 22,
+      phase: 'night',
+      dayOfWeek: 'Wednesday',
+    },
+    weather: {
+      tempC: 23,
+      feelsLikeC: 25,
+      humidityPct: 86,
+      condition: 'rain',
+      precipitationMmHr: 1.6,
+      cloudCoverPct: 91,
+      windMps: 5.4,
+      isDay: false,
+      sunriseProximityMin: 1000,
+      sunsetProximityMin: 265,
+    },
+    location: {
+      speedMps: 0.2,
+      bodyActivity: 'still',
+      place: {
+        category: 'bar',
+        type: 'bar',
+        name: 'Low Light Room',
+      },
+      road: {
+        class: 'residential',
+        name: 'Mercury Lane',
+      },
+      nearby: [
+        { category: 'amenity', type: 'bar', name: 'Low Light Room', distanceM: 10 },
+        { category: 'amenity', type: 'restaurant', name: 'Night Kitchen', distanceM: 46 },
+        { category: 'tourism', type: 'gallery', name: 'Blue Hour Gallery', distanceM: 74 },
+        { category: 'shop', type: 'convenience', name: 'Late Store', distanceM: 96 },
+        { category: 'railway', type: 'station', name: 'Tin Hau', distanceM: 164 },
+        { category: 'leisure', type: 'park', name: 'Temple Garden', distanceM: 226 },
+        { category: 'amenity', type: 'cafe', name: 'After Midnight', distanceM: 282 },
+        { category: 'building', type: 'apartments', name: 'Mercury House', distanceM: 340 },
+      ],
+      neighborhood: 'Tin Hau',
+      city: 'Hong Kong',
+      country: 'Hong Kong',
+      countryCode: 'HK',
+    },
+    movement: {
+      intensityNormalized: 0.14,
+      pattern: 'still',
+    },
+    cosmic: {
+      spaceWeather: {
+        kIndex: 4,
+        solarWindSpeedKmS: 438,
+        solarWindDensity: 7.1,
+      },
+    },
+  },
+};
+
 function normalizeDegrees(value: number): number {
   return ((value % 360) + 360) % 360;
+}
+
+function clamp01(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.min(1, Math.max(0, value));
 }
 
 function signedDistanceFromNeedle(value: number): number {
@@ -138,6 +284,47 @@ function readableArcPath(radius: number, midAngle: number, span = 20): string {
   return arcPath(radius, midAngle, span);
 }
 
+function ringPath(radius: number, startAngle: number, span: number, shouldClose = false): string {
+  const segmentCount = Math.max(2, Math.ceil(Math.abs(span) / 4));
+  const points = Array.from({ length: segmentCount + 1 }, (_, index) => {
+    const angle = startAngle + span * (index / segmentCount);
+    return pointOnOrbit(angle, radius);
+  });
+  const [first, ...rest] = points;
+
+  return [
+    `M ${first!.x.toFixed(3)} ${first!.y.toFixed(3)}`,
+    ...rest.map((point) => `L ${point.x.toFixed(3)} ${point.y.toFixed(3)}`),
+    shouldClose ? 'Z' : '',
+  ].join(' ');
+}
+
+function annularRingPath(innerRadius: number, outerRadius: number, startAngle = 0): string {
+  const segmentCount = 96;
+  const outerPoints = Array.from({ length: segmentCount + 1 }, (_, index) => {
+    return pointOnOrbit(startAngle + 360 * (index / segmentCount), outerRadius);
+  });
+  const innerPoints = Array.from({ length: segmentCount + 1 }, (_, index) => {
+    return pointOnOrbit(startAngle + 360 * (1 - index / segmentCount), innerRadius);
+  });
+  const [outerStart, ...outerRest] = outerPoints;
+  const [innerStart, ...innerRest] = innerPoints;
+
+  return [
+    `M ${outerStart!.x.toFixed(3)} ${outerStart!.y.toFixed(3)}`,
+    ...outerRest.map((point) => `L ${point.x.toFixed(3)} ${point.y.toFixed(3)}`),
+    'Z',
+    `M ${innerStart!.x.toFixed(3)} ${innerStart!.y.toFixed(3)}`,
+    ...innerRest.map((point) => `L ${point.x.toFixed(3)} ${point.y.toFixed(3)}`),
+    'Z',
+  ].join(' ');
+}
+
+function progressArcPath(radius: number, startAngle: number, progress: number): string {
+  const span = Math.max(0.1, Math.min(359.9, clamp01(progress) * 359.9));
+  return ringPath(radius, startAngle, span);
+}
+
 function annularArcPath(innerRadius: number, outerRadius: number, midAngle: number, span: number): string {
   const outerStart = pointOnOrbit(midAngle - span / 2, outerRadius);
   const outerEnd = pointOnOrbit(midAngle + span / 2, outerRadius);
@@ -169,14 +356,8 @@ function affordanceLabel(options: DialOption[], index: number): string {
   return `${shortTail(previous)} . ${current} . ${shortHead(next)}`;
 }
 
-function agentStateForActivity(option: DialOption): AgentState {
-  if (option.value === 'running' || option.label.includes('ENERGY')) return 'talking';
-  if (option.value === 'still') return 'listening';
-  return 'thinking';
-}
-
 function playDialTick(): void {
-  const audioWindow = window as Window & { webkitAudioContext?: typeof AudioContext };
+  const audioWindow = window as AudioContextWindow;
   const AudioContextClass = window.AudioContext || audioWindow.webkitAudioContext;
   if (!AudioContextClass) return;
 
@@ -221,32 +402,96 @@ function ClockMarks() {
   );
 }
 
+function MusicProgressRing(props: {
+  mode: MusicProgressMode;
+  progress: number;
+  startAngle: number;
+}) {
+  const clampedProgress = clamp01(props.progress);
+  const trackPath = ringPath(MUSIC_PROGRESS_RADIUS, props.startAngle, 360, true);
+  const fillPath = progressArcPath(MUSIC_PROGRESS_RADIUS, props.startAngle, clampedProgress);
+
+  return (
+    <g
+      aria-label={`Music progress: ${Math.round(clampedProgress * 100)} percent`}
+      className={`phone-dial__music-progress phone-dial__music-progress--${props.mode}`}
+      role="img"
+    >
+      <path
+        className="phone-dial__music-progress-backing"
+        d={trackPath}
+        fill="none"
+      />
+      <path
+        className="phone-dial__music-progress-track"
+        d={trackPath}
+        fill="none"
+      />
+      {props.mode !== 'idle' ? (
+        <path
+          className="phone-dial__music-progress-fill"
+          d={fillPath}
+          fill="none"
+        />
+      ) : null}
+    </g>
+  );
+}
+
 function CenterOrb(props: {
   activity: DialOption;
   bpm: number;
   colors: [string, string];
   intensity: number;
+  isMusicPlaying: boolean;
+  musicLevel: number;
   seed: number;
 }) {
+  const rawClipId = useId();
+  const clipId = `center-orb-clip-${rawClipId.replace(/:/g, '')}`;
+  const orbState = props.isMusicPlaying ? 'talking' : null;
+  const orbKey = `${orbState ?? 'idle'}-${props.colors[0]}-${props.colors[1]}-${props.seed}`;
+
   return (
-    <foreignObject
-      height={CENTER_ORB_SIZE}
-      width={CENTER_ORB_SIZE}
-      x={DIAL_CENTER.x - CENTER_ORB_SIZE / 2}
-      y={DIAL_CENTER.y - CENTER_ORB_SIZE / 2}
-    >
-      <div className="phone-dial__center-orb-shell">
-        <Orb
-          agentState={agentStateForActivity(props.activity)}
-          className="phone-dial__orb-canvas"
-          colors={props.colors}
-          manualInput={props.intensity}
-          manualOutput={Math.min(1, props.bpm / 176)}
-          seed={props.seed}
-          volumeMode="manual"
-        />
-      </div>
-    </foreignObject>
+    <g className="phone-dial__center-orb">
+      <defs>
+        <clipPath clipPathUnits="userSpaceOnUse" id={clipId}>
+          <circle cx={DIAL_CENTER.x} cy={DIAL_CENTER.y} r={CENTER_ORB_CLIP_RADIUS} />
+        </clipPath>
+      </defs>
+      <foreignObject
+        className="phone-dial__center-orb-object"
+        clipPath={`url(#${clipId})`}
+        height={CENTER_ORB_SIZE}
+        width={CENTER_ORB_SIZE}
+        x={DIAL_CENTER.x - CENTER_ORB_SIZE / 2}
+        y={DIAL_CENTER.y - CENTER_ORB_SIZE / 2}
+      >
+        <div className="phone-dial__center-orb-shell">
+          <Orb
+            agentState={orbState}
+            className="phone-dial__orb-canvas"
+            colors={props.colors}
+            key={orbKey}
+            seed={props.seed}
+            volumeMode="auto"
+          />
+        </div>
+      </foreignObject>
+    </g>
+  );
+}
+
+function OrbBezel() {
+  return (
+    <g className="phone-dial__orb-bezel" pointerEvents="none">
+      <path
+        className="phone-dial__orb-bezel-fill"
+        d={annularRingPath(ORB_BEZEL_INNER_RADIUS, ORB_BEZEL_OUTER_RADIUS)}
+        fillRule="evenodd"
+      />
+      <circle className="phone-dial__orb-bezel-inner-edge" cx={DIAL_CENTER.x} cy={DIAL_CENTER.y} fill="none" r={ORB_BEZEL_INNER_RADIUS} />
+    </g>
   );
 }
 
@@ -340,8 +585,11 @@ function SelectionOverlay(props: {
           bpm={props.bpm}
           colors={props.orbColors}
           intensity={props.intensity}
+          isMusicPlaying={false}
+          musicLevel={0}
           seed={props.bpm + selected.id.length}
         />
+        <OrbBezel />
 
         <g className="phone-dial__location-list">
           {props.options.map((option, index) => {
@@ -406,8 +654,31 @@ function SelectionOverlay(props: {
 
 export default function DiskUiPrototype() {
   const runtimeRef = useRef<LiveDataRuntime | null>(null);
+  const simulationAudioRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const audioAnalyserRef = useRef<AnalyserNode | null>(null);
+  const audioAnalysisDataRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
+  const simulationTimerRef = useRef<number | null>(null);
+  const simulationRunRef = useRef(0);
   const liveStateVector = useStore((state) => state.stateVector);
   const permissionsGranted = useStore((state) => state.permissionsGranted);
+  const songs = useStore((state) => state.songs);
+  const currentSongId = useStore((state) => state.currentSongId);
+  const isPlaying = useStore((state) => state.isPlaying);
+  const generationLatencyEMA = useStore((state) => state.generationLatencyEMA);
+  const [progressClock, setProgressClock] = useState(() => performance.now());
+  const [backgroundBusyUntil, setBackgroundBusyUntil] = useState(0);
+  const [backgroundBusyStartedAt, setBackgroundBusyStartedAt] = useState(0);
+  const [musicOrbLevel, setMusicOrbLevel] = useState(0);
+  const [simulationKind, setSimulationKind] = useState<SimulationKind | null>(null);
+  const [simulatedPlayback, setSimulatedPlayback] = useState<SimulatedPlayback>({
+    kind: null,
+    status: 'idle',
+    label: 'LOCAL MUSIC',
+    startedAt: null,
+    durationSec: 30,
+  });
   const [hourOverride, setHourOverride] = useState<number | null>(null);
   const [liveDataStatus, setLiveDataStatus] = useState<LiveDataStatus>('demo');
   const [activeOverlay, setActiveOverlay] = useState<DialOptionKind | null>(null);
@@ -416,12 +687,14 @@ export default function DiskUiPrototype() {
   const [selectedLocationId, setSelectedLocationId] = useState(INITIAL_MODEL.locationOptions[0]!.id);
   const [selectedActivityId, setSelectedActivityId] = useState(INITIAL_MODEL.activityOptions[0]!.id);
 
+  const simulatedStateVector = simulationKind ? SIMULATION_STATE_VECTORS[simulationKind] : null;
+  const activeStateVector = simulatedStateVector ?? liveStateVector;
   const snapshot = useMemo(
-    () => (liveStateVector ? snapshotFromStateVector(liveStateVector, DEMO_SNAPSHOT) : DEMO_SNAPSHOT),
-    [liveStateVector],
+    () => (activeStateVector ? snapshotFromStateVector(activeStateVector, DEMO_SNAPSHOT) : DEMO_SNAPSHOT),
+    [activeStateVector],
   );
   const model = useMemo(() => buildDialViewModel(snapshot, hourOverride ?? undefined), [hourOverride, snapshot]);
-  const dataSourceLabel = liveStateVector ? 'LIVE DATA' : 'DEMO DATA';
+  const dataSourceLabel = simulationKind ? `${simulationKind.toUpperCase()} SIM` : liveStateVector ? 'LIVE DATA' : 'DEMO DATA';
   const liveControlLabel = liveDataStatus === 'starting'
     ? 'STARTING DATA'
     : liveStateVector
@@ -433,12 +706,43 @@ export default function DiskUiPrototype() {
 
   useEffect(() => {
     return () => {
+      stopSimulatedAudio(false);
       runtimeRef.current?.aggregator.stop();
       runtimeRef.current?.motion.stop();
       runtimeRef.current?.geolocation.stop();
       runtimeRef.current = null;
+      audioContextRef.current?.close().catch(() => undefined);
+      audioContextRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setProgressClock(performance.now()), 250);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const analyser = audioAnalyserRef.current;
+      const data = audioAnalysisDataRef.current;
+      if (!analyser || !data || simulatedPlayback.status !== 'playing') {
+        setMusicOrbLevel((current) => (current > 0.01 ? current * 0.7 : 0));
+        return;
+      }
+
+      analyser.getByteTimeDomainData(data);
+      let sum = 0;
+      for (const sample of data) {
+        const centered = (sample - 128) / 128;
+        sum += centered * centered;
+      }
+      const rms = Math.sqrt(sum / data.length);
+      const nextLevel = clamp01(rms * 4.8);
+      setMusicOrbLevel((current) => (Math.abs(current - nextLevel) < 0.01 ? current : current * 0.55 + nextLevel * 0.45));
+    }, 80);
+
+    return () => window.clearInterval(timer);
+  }, [simulatedPlayback.status]);
 
   useEffect(() => {
     if (!model.locationOptions.some((option) => option.id === selectedLocationId)) {
@@ -470,6 +774,48 @@ export default function DiskUiPrototype() {
   const sunsetPoint = useMemo(() => pointOnOrbit(hourToAngle(model.sunsetHour), SUN_ORBIT_RADIUS), [model.sunsetHour]);
   const topButtonLabel = affordanceLabel(model.locationOptions, selectedLocationIndex);
   const bottomButtonLabel = affordanceLabel(model.activityOptions, selectedActivityIndex);
+  const currentSong = useMemo(
+    () => (currentSongId ? songs.find((song) => song.songId === currentSongId) : songs.at(-1)) ?? null,
+    [currentSongId, songs],
+  );
+  const simulatedPlaybackProgress = simulatedPlayback.status === 'playing' && simulatedPlayback.startedAt != null
+    ? clamp01((progressClock - simulatedPlayback.startedAt) / (simulatedPlayback.durationSec * 1000))
+    : null;
+  const storePlaybackProgress = currentSong?.startedAt != null && isPlaying
+    ? clamp01((progressClock - currentSong.startedAt) / (currentSong.durationSec * 1000))
+    : null;
+  const playbackProgress = simulatedPlaybackProgress ?? storePlaybackProgress;
+  const musicGenerationPending = ENABLE_DIAL_MUSIC_GENERATION && !isPlaying && Boolean(liveStateVector);
+  const simulationLoading = simulatedPlayback.status === 'loading';
+  const backgroundWorkPending = liveDataStatus === 'starting' || simulationLoading || musicGenerationPending || progressClock < backgroundBusyUntil;
+  const musicProgressMode: MusicProgressMode = playbackProgress != null
+    ? 'playback'
+    : backgroundWorkPending
+      ? 'loading'
+      : 'idle';
+  const loadingPeriodMs = Math.max(8_000, Math.min(60_000, generationLatencyEMA || 60_000));
+  const scheduledLoadingProgress = backgroundBusyStartedAt > 0 && backgroundBusyUntil > backgroundBusyStartedAt && progressClock < backgroundBusyUntil
+    ? clamp01((progressClock - backgroundBusyStartedAt) / (backgroundBusyUntil - backgroundBusyStartedAt))
+    : null;
+  const musicProgressValue = musicProgressMode === 'playback'
+    ? playbackProgress ?? 0
+    : musicProgressMode === 'loading'
+      ? scheduledLoadingProgress ?? (progressClock % loadingPeriodMs) / loadingPeriodMs
+      : 0;
+  const localMusicLabel = simulatedPlayback.kind ? simulatedPlayback.label : 'LOCAL MUSIC';
+  const musicProgressLabel = musicProgressMode === 'playback'
+    ? `${Math.round(musicProgressValue * 100)}%`
+    : simulatedPlayback.status === 'missing'
+      ? 'MISSING AUDIO'
+      : simulatedPlayback.status === 'blocked'
+        ? 'TAP AGAIN'
+        : simulatedPlayback.status === 'complete'
+          ? 'COMPLETE'
+          : musicProgressMode.toUpperCase();
+  const musicSourceLabel = simulatedPlayback.kind ? localMusicLabel : `MUSIC ${compositionPackage.generation.musicEnabled ? 'ON' : 'OFF'}`;
+  const isMusicOrbPlaying = simulatedPlayback.status === 'playing' || isPlaying;
+  const activeMusicOrbLevel = simulatedPlayback.status === 'playing' ? musicOrbLevel : isPlaying ? 0.42 : 0;
+  const canStopMusic = simulatedPlayback.status === 'loading' || simulatedPlayback.status === 'playing';
 
   function activeOptions(): DialOption[] {
     return activeOverlay === 'activity' ? model.activityOptions : model.locationOptions;
@@ -556,9 +902,177 @@ export default function DiskUiPrototype() {
     playDialTick();
   }
 
+  function disconnectAudioAnalysis(resetLevel = true): void {
+    try {
+      audioSourceRef.current?.disconnect();
+    } catch {
+      // The source may already be detached after an audio element is replaced.
+    }
+    try {
+      audioAnalyserRef.current?.disconnect();
+    } catch {
+      // The analyser may already be detached after an audio element is replaced.
+    }
+    audioSourceRef.current = null;
+    audioAnalyserRef.current = null;
+    audioAnalysisDataRef.current = null;
+    if (resetLevel) setMusicOrbLevel(0);
+  }
+
+  function connectAudioAnalysis(audio: HTMLAudioElement): void {
+    const audioWindow = window as AudioContextWindow;
+    const AudioContextClass = window.AudioContext || audioWindow.webkitAudioContext;
+    if (!AudioContextClass) return;
+
+    disconnectAudioAnalysis(false);
+    try {
+      const context = audioContextRef.current ?? new AudioContextClass();
+      audioContextRef.current = context;
+      if (context.state === 'suspended') void context.resume();
+
+      const source = context.createMediaElementSource(audio);
+      const analyser = context.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.72;
+      source.connect(analyser);
+      analyser.connect(context.destination);
+
+      audioSourceRef.current = source;
+      audioAnalyserRef.current = analyser;
+      audioAnalysisDataRef.current = new Uint8Array(new ArrayBuffer(analyser.fftSize));
+    } catch {
+      disconnectAudioAnalysis(false);
+    }
+  }
+
+  function stopSimulatedAudio(resetOrb = true): void {
+    if (simulationTimerRef.current != null) {
+      window.clearTimeout(simulationTimerRef.current);
+      simulationTimerRef.current = null;
+    }
+    disconnectAudioAnalysis(resetOrb);
+    const audio = simulationAudioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.removeAttribute('src');
+      audio.load();
+      simulationAudioRef.current = null;
+    }
+  }
+
+  function startSimulation(kind: SimulationKind): void {
+    const runId = simulationRunRef.current + 1;
+    simulationRunRef.current = runId;
+    stopSimulatedAudio();
+    const now = performance.now();
+    const loadingDurationMs = 3_000;
+    const label = kind === 'day' ? 'DAY MUSIC' : 'NIGHT MUSIC';
+    let audioHadError = false;
+
+    setSimulationKind(kind);
+    setHourOverride(null);
+    setBackgroundBusyStartedAt(now);
+    setBackgroundBusyUntil(now + loadingDurationMs);
+    setSimulatedPlayback({
+      kind,
+      status: 'loading',
+      label,
+      startedAt: null,
+      durationSec: 30,
+    });
+
+    const audio = new Audio(SIMULATION_AUDIO[kind]);
+    audio.preload = 'auto';
+    audio.volume = 0;
+    connectAudioAnalysis(audio);
+    simulationAudioRef.current = audio;
+
+    audio.addEventListener('loadedmetadata', () => {
+      if (simulationRunRef.current !== runId) return;
+      const durationSec = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 30;
+      setSimulatedPlayback((current) => ({ ...current, durationSec }));
+    });
+    audio.addEventListener('error', () => {
+      audioHadError = true;
+    });
+    audio.addEventListener('ended', () => {
+      if (simulationRunRef.current !== runId) return;
+      setSimulatedPlayback((current) => ({
+        ...current,
+        status: 'complete',
+        startedAt: null,
+      }));
+    });
+
+    void audio.play()
+      .then(() => {
+        if (simulationRunRef.current !== runId) return;
+        audio.volume = 0;
+      })
+      .catch(() => undefined);
+
+    simulationTimerRef.current = window.setTimeout(() => {
+      if (simulationRunRef.current !== runId) return;
+      simulationTimerRef.current = null;
+
+      if (audioHadError || audio.error) {
+        setSimulatedPlayback((current) => ({
+          ...current,
+          status: 'missing',
+          startedAt: null,
+        }));
+        return;
+      }
+
+      audio.volume = 1;
+      try {
+        audio.currentTime = 0;
+      } catch {
+        // Some browsers disallow seeking before metadata is ready.
+      }
+
+      void audio.play()
+        .then(() => {
+          if (simulationRunRef.current !== runId) return;
+          const durationSec = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 30;
+          setSimulatedPlayback({
+            kind,
+            status: 'playing',
+            label,
+            startedAt: performance.now(),
+            durationSec,
+          });
+        })
+        .catch(() => {
+          if (simulationRunRef.current !== runId) return;
+          setSimulatedPlayback((current) => ({
+            ...current,
+            status: 'blocked',
+            startedAt: null,
+          }));
+        });
+    }, loadingDurationMs);
+  }
+
+  function stopSimulationMusic(): void {
+    if (!canStopMusic) return;
+    simulationRunRef.current += 1;
+    stopSimulatedAudio();
+    setBackgroundBusyStartedAt(0);
+    setBackgroundBusyUntil(0);
+    setSimulatedPlayback((current) => ({
+      ...current,
+      status: 'idle',
+      startedAt: null,
+    }));
+  }
+
   async function startLiveData(): Promise<void> {
     if (runtimeRef.current || liveDataStatus === 'starting') return;
     setLiveDataStatus('starting');
+    const now = performance.now();
+    setBackgroundBusyStartedAt(now);
+    setBackgroundBusyUntil(now + 1_800);
     try {
       const motion = new MotionSensor();
       const motionGranted = await motion.requestPermission();
@@ -614,6 +1128,10 @@ export default function DiskUiPrototype() {
       data-composition-package={compositionPackage.version}
       data-live-source={dataSourceLabel}
       data-music-generation={ENABLE_DIAL_MUSIC_GENERATION ? 'enabled' : 'disabled'}
+      data-orb-audio={isMusicOrbPlaying ? 'reactive' : 'idle'}
+      data-orb-colors={model.orbColors.join(',')}
+      data-orb-level={activeMusicOrbLevel.toFixed(3)}
+      data-progress-mode={musicProgressMode}
     >
       <svg
         aria-label={`Dial state: ${model.phaseLabel}, ${formatHour(model.hour)}`}
@@ -658,9 +1176,11 @@ export default function DiskUiPrototype() {
         )}
 
         <image href={ASSETS.outerRing} height="379" width="379" x="8" y="236.5" />
-        <g transform={`translate(${DIAL_CENTER.x} ${DIAL_CENTER.y}) rotate(180) scale(1 -1) translate(-189.5 -189.5)`}>
-          <image href={ASSETS.outerShadow} height="379" width="359.624" x="0" y="0" />
-        </g>
+        <MusicProgressRing
+          mode={musicProgressMode}
+          progress={musicProgressValue}
+          startAngle={hourToAngle(model.sunriseHour)}
+        />
         <circle className="phone-dial__sun-orbit" cx={DIAL_CENTER.x} cy={DIAL_CENTER.y} fill="none" r={SUN_ORBIT_RADIUS} />
         <line className="phone-dial__horizon-line" x1={sunrisePoint.x} x2={sunsetPoint.x} y1={sunrisePoint.y} y2={sunsetPoint.y} />
         <g className="phone-dial__horizon-marker">
@@ -691,8 +1211,11 @@ export default function DiskUiPrototype() {
           bpm={model.bpm}
           colors={model.orbColors}
           intensity={model.raw.stateVector.movement.intensityNormalized}
+          isMusicPlaying={isMusicOrbPlaying}
+          musicLevel={activeMusicOrbLevel}
           seed={model.bpm + selectedLocation.label.length}
         />
+        <OrbBezel />
 
         <circle
           aria-label="Drag orbit to change time"
@@ -751,7 +1274,7 @@ export default function DiskUiPrototype() {
         </g>
 
         <g className="phone-dial__data-readouts">
-          <text x="25" y="710">{dataSourceLabel} / MUSIC {compositionPackage.generation.musicEnabled ? 'ON' : 'OFF'}</text>
+          <text x="25" y="710">{dataSourceLabel} / {musicSourceLabel} / {musicProgressLabel}</text>
           <text x="25" y="728">{model.weatherLabel} / {model.tempLabel}</text>
           <text x="25" y="746">{model.motionLabel}</text>
           <text x="25" y="764">{model.placeLabel} / {compositionPackage.music.bpm} BPM / {compositionPackage.music.key}</text>
@@ -759,6 +1282,35 @@ export default function DiskUiPrototype() {
         </g>
       </svg>
       <div className="phone-dial__live-controls">
+        <div className="phone-dial__sim-controls">
+          <button
+            aria-label="Simulate daytime music"
+            className="phone-dial__sim-button phone-dial__sim-button--day"
+            disabled={simulatedPlayback.status === 'loading' && simulatedPlayback.kind === 'day'}
+            onClick={() => startSimulation('day')}
+            type="button"
+          >
+            DAY MUSIC
+          </button>
+          <button
+            aria-label="Simulate nighttime music"
+            className="phone-dial__sim-button phone-dial__sim-button--night"
+            disabled={simulatedPlayback.status === 'loading' && simulatedPlayback.kind === 'night'}
+            onClick={() => startSimulation('night')}
+            type="button"
+          >
+            NIGHT MUSIC
+          </button>
+          <button
+            aria-label="Stop simulated music"
+            className="phone-dial__sim-button phone-dial__sim-button--stop"
+            disabled={!canStopMusic}
+            onClick={stopSimulationMusic}
+            type="button"
+          >
+            STOP MUSIC
+          </button>
+        </div>
         <button
           aria-label="Start live device data"
           className="phone-dial__live-button"
