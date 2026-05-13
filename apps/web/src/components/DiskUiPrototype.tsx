@@ -505,8 +505,14 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
   const sunPoint = pointOnOrbit(hourAngle, SUN_ORBIT_RADIUS);
   const sunrisePoint = pointOnOrbit(hourToAngle(model.sunriseHour), SUN_ORBIT_RADIUS);
   const sunsetPoint = pointOnOrbit(hourToAngle(model.sunsetHour), SUN_ORBIT_RADIUS);
-  const topButtonLabel = model.locationOptions[0]?.label ?? '';
+  // Fall back to the time phase when there's no location signal — better
+  // than an empty arc button when geolocation was denied.
+  const topButtonLabel = model.locationOptions[0]?.label ?? model.phaseLabel;
   const bottomButtonLabel = model.activityOptions[0]?.label ?? '';
+  // Top readout line: weather + temp, or phase + day-of-week as fallback.
+  const topReadout = [model.weatherLabel, model.tempLabel].filter(Boolean).join(' / ')
+    || [model.phaseLabel, model.dayOfWeek].filter(Boolean).join(' / ');
+  const bottomReadout = [model.placeLabel, `${model.bpm} BPM`, model.key].filter(Boolean).join(' / ');
 
   return (
     <section
@@ -675,9 +681,9 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
         </g>
 
         <g className="phone-dial__data-readouts">
-          <text x="25" y="710">{model.weatherLabel} / {model.tempLabel}</text>
+          <text x="25" y="710">{topReadout}</text>
           <text x="25" y="728">{model.motionLabel}</text>
-          <text x="25" y="746">{model.placeLabel} / {model.bpm} BPM / {model.key}</text>
+          <text x="25" y="746">{bottomReadout}</text>
         </g>
       </svg>
       <CenterOrb

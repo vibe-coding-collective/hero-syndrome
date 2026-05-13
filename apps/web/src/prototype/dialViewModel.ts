@@ -154,9 +154,13 @@ export function buildDialViewModelFromSong(song: PlayedSong): DialViewModel | nu
     isNight,
     sunriseHour,
     sunsetHour,
-    weatherLabel: WEATHER_LABELS[weatherCondition],
+    // Empty strings rather than placeholder text when data is missing — the
+    // component joins readout lines with `filter(Boolean).join(' / ')` so
+    // missing parts disappear instead of rendering as "UNKNOWN" / "NO
+    // WEATHER" / "MAINLY CLEAR" (the latter would be a lie).
+    weatherLabel: weather ? WEATHER_LABELS[weather.condition] : '',
     weatherCondition,
-    tempLabel: weather ? `${Math.round(weather.tempC)}C / ${Math.round(weather.humidityPct)}%` : 'NO WEATHER',
+    tempLabel: weather ? `${Math.round(weather.tempC)}C / ${Math.round(weather.humidityPct)}%` : '',
     motionLabel: buildMotionLabel(state, song.bodyActivity ?? 'still'),
     placeLabel: buildPlaceLabel(state, song.locationType),
     materialLabel: (song.phraseOfTheMoment?.material ?? '').toUpperCase(),
@@ -187,14 +191,18 @@ function collectLocationOptions(song: PlayedSong, _moodTags: string[]): DialOpti
   const location = state.location;
   const options: DialOption[] = [];
 
-  addOption(options, {
-    id: `location-type:${locationType}`,
-    kind: 'location',
-    label: LOCATION_TYPE_LABELS[locationType] ?? displayToken(locationType),
-    value: locationType,
-    source: 'classified-location-type',
-    score: 110,
-  });
+  // Skip the classified-location-type option when it's just "unknown" — better
+  // to leave the slot empty than to label the user's place as UNKNOWN.
+  if (locationType !== 'unknown') {
+    addOption(options, {
+      id: `location-type:${locationType}`,
+      kind: 'location',
+      label: LOCATION_TYPE_LABELS[locationType] ?? displayToken(locationType),
+      value: locationType,
+      source: 'classified-location-type',
+      score: 110,
+    });
+  }
 
   if (location?.place) {
     addOption(options, {
@@ -348,7 +356,9 @@ function buildMotionLabel(state: StateVector, body: BodyActivity): string {
 
 function buildPlaceLabel(state: StateVector, locationType: LocationType): string {
   const primary = state.location?.place?.name ?? state.location?.neighborhood ?? state.location?.city;
-  return compactLabel(primary ?? LOCATION_TYPE_LABELS[locationType] ?? locationType);
+  if (primary) return compactLabel(primary);
+  if (locationType === 'unknown') return '';
+  return LOCATION_TYPE_LABELS[locationType] ?? '';
 }
 
 function estimateSunHours(state: StateVector): { sunriseHour: number; sunsetHour: number } {
