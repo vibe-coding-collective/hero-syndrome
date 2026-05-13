@@ -1,15 +1,13 @@
 import { ulid } from 'ulid';
-import { api, preludeUrl } from '../api/client';
+import { api } from '../api/client';
 import { AudioEngine } from '../audio/engine';
 import { AudioFeatureExtractor } from '../audio/audioFeatures';
 import { setMediaSessionMetadata, setMediaSessionPlaybackState } from '../audio/mediaSession';
 import { GeolocationSensor } from '../sensors/geolocation';
 import { MotionSensor } from '../sensors/motion';
-import { readClock } from '../sensors/clock';
 import { StateAggregator } from '../state/aggregator';
 import { SongSynthesizer } from '../state/songSynthesizer';
-import { loadPreludesManifest, pickPrelude } from '../prelude/manifest';
-import { useStore, type PlayedSong } from '../state/store';
+import { useStore } from '../state/store';
 
 export interface SceneRuntime {
   engine: AudioEngine;
@@ -100,60 +98,22 @@ export async function startScene(audioCtx?: AudioContext): Promise<SceneRuntime>
     },
   });
 
-  // Wait for the aggregator's first tick that includes a geolocation fix —
-  // not just any tick. `firstTick` can resolve before the geolocation sensor
-  // returns its first reading, in which case song 1 goes out with only time
-  // + motion (no weather, no place, no classification). Waiting for
-  // `firstLocationTick` lets weather + reverse-geocode + nearby actually
-  // populate before /generate, so song 1's dial readouts match the user's
-  // location instead of falling back to coords/phase. Cap the wait at 25s
-  // so a slow or denied GPS doesn't block the session indefinitely.
-  // (15s wasn't enough on iOS Chrome's first start; the prelude carries
-  // audio during this wait so the user isn't sitting in silence.)
-  Promise.race([
-    aggregator.firstLocationTick,
-    new Promise<void>((resolve) => window.setTimeout(resolve, 25_000)),
-  ]).then(() => synthesizer.generateNext().catch(() => undefined));
+  // Wait for the aggregator's first tick that includes a geolocation fix
+  // before generating any song. No timeout: if location can't be obtained
+  // (permission denied, GPS unavailable), no song is generated and the user
+  // stays on the loading screen. We don't want to ship a song that wasn't
+  // composed against the user's actual place.
+  aggregator.firstLocationTick.then(() => synthesizer.generateNext().catch(() => undefined));
 
   // The cosmic block is fetched in parallel; it's session-frozen so the
   // request will pick it up if it lands first, and the synthesizer's
   // watchdog will retry if it doesn't.
   void synthesizer; // referenced above
 
-  // Pick a prelude based on initial intensity / phase.
-  let preludePlayed = false;
-  try {
-    const manifest = await loadPreludesManifest();
-    if (manifest.preludes.length > 0) {
-      const intensity = motion.read().intensityNormalized;
-      const phase = readClock().phase;
-      const prelude = pickPrelude(manifest, intensity, phase);
-      if (prelude) {
-        const url = preludeUrl(prelude.id);
-        const songRecord: PlayedSong = {
-          songId: prelude.id,
-          songUrl: url,
-          metadata: prelude.metadata,
-          composition: prelude.composition,
-          durationSec: prelude.durationSec,
-          source: 'prelude',
-        };
-        useStore.getState().appendSong(songRecord);
-        await engine.start(url, prelude.id);
-        preludePlayed = true;
-      }
-    }
-  } catch (err) {
-    console.warn('prelude playback failed', err);
-  }
-
-  // If no prelude available, the audio engine remains idle until song 1 enqueues.
-  // The synthesizer has already kicked off /generate; audio will start ~when it returns.
-  if (!preludePlayed) {
-    // Enqueue is idempotent vs start: SongSynthesizer.generateNext()'s eventual
-    // engine.enqueue() will fall through to engine.start() since engine.current is null.
-    // No further action needed here.
-  }
+  // No prelude. The audio engine stays idle until song 1's audio lands; the
+  // user sees the loading screen the whole time. SongSynthesizer.generateNext
+  // eventually calls engine.enqueue, which falls through to engine.start
+  // since engine.current is null.
 
   let scheduledFinalize = false;
   const scheduleFinalize = (): void => {
