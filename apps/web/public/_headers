@@ -1,0 +1,24 @@
+# Cloudflare Pages headers config. These prevent browsers from caching the
+# files that gate every other update: index.html, the service worker itself,
+# and the SW manifest. If sw.js was cached even briefly, stuck users would
+# stay stuck.
+
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/workbox-*.js
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/manifest.webmanifest
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/index.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/
+  Cache-Control: no-cache, no-store, must-revalidate
+
+# Hashed asset bundles never change content under the same filename, so they
+# can be cached aggressively. The hash in the filename is the cache key.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

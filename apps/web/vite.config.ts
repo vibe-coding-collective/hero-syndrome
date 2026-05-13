@@ -7,6 +7,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // We register the SW manually from main.tsx so we can listen for
+      // controllerchange and force-reload when a new SW takes over.
+      injectRegister: false,
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
         name: 'Hero Syndrome',
@@ -31,6 +34,8 @@ export default defineConfig({
         // stale window is one page load.
         skipWaiting: true,
         clientsClaim: true,
+        // Sweep precache entries from previous builds so they don't linger.
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
             urlPattern: ({ url }) => /\/preludes\/manifest\.json$/.test(url.pathname),
