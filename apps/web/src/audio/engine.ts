@@ -24,6 +24,18 @@ const RAMP_SEC = 5;
 const DEFAULT_LEAD_SEC = 90;
 const TAIL_LOOP_CAP_MS = 10_000;
 
+/** Audio crossfade ramp length in seconds. Exported so the dial's progress
+ *  ring can complete at the moment the next song starts fading in, matching
+ *  what the user actually hears. */
+export const AUDIO_RAMP_SEC = RAMP_SEC;
+
+/** Below this absolute sample value, audio counts as silence for the purpose
+ *  of trimming buffer tails. ~-46dB. */
+const SILENCE_THRESHOLD = 0.005;
+/** Always keep at least this much tail after the last audible sample so a
+ *  natural fade isn't clipped. */
+const MIN_TAIL_MS = 250;
+
 export class AudioEngine {
   ctx: AudioContext;
   master: GainNode;
@@ -106,7 +118,51 @@ export class AudioEngine {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`audio fetch failed (${res.status})`);
     const buf = await res.arrayBuffer();
-    return await this.ctx.decodeAudioData(buf);
+    const decoded = await this.ctx.decodeAudioData(buf);
+    return this.trimTrailingSilence(decoded);
+  }
+
+  /** Strip pure trailing silence from a decoded buffer. ElevenLabs renderings
+   *  sometimes pad audio with 1–3 seconds of silence at the end; overlaying
+   *  our 5s crossfade onto that creates a perceived gap between songs. We
+   *  scan back from the end for the first audible sample and keep a small
+   *  tail (MIN_TAIL_MS) so any natural fade isn't truncated. */
+  private trimTrailingSilence(buffer: AudioBuffer): AudioBuffer {
+    const channels = buffer.numberOfChannels;
+    const length = buffer.length;
+    if (length === 0) return buffer;
+    const channelData: Float32Array[] = [];
+    for (let c = 0; c < channels; c++) channelData.push(buffer.getChannelData(c));
+
+    let lastAudible = -1;
+    for (let i = length - 1; i >= 0; i--) {
+      let maxAbs = 0;
+      for (let c = 0; c < channels; c++) {
+        const v = Math.abs(channelData[c]![i]!);
+        if (v > maxAbs) maxAbs = v;
+      }
+      if (maxAbs > SILENCE_THRESHOLD) {
+        lastAudible = i;
+        break;
+      }
+    }
+    if (lastAudible < 0) return buffer; // entirely silent, return as-is
+
+    const sampleRate = buffer.sampleRate;
+    const minTailFrames = Math.floor((MIN_TAIL_MS / 1000) * sampleRate);
+    const trimmedLength = Math.min(length, lastAudible + 1 + minTailFrames);
+    // Don't bother trimming if there's less than ~100ms of silence to remove.
+    if (length - trimmedLength < Math.floor(sampleRate * 0.1)) return buffer;
+
+    const trimmed = this.ctx.createBuffer(channels, trimmedLength, sampleRate);
+    for (let c = 0; c < channels; c++) {
+      // Slice into a fresh Float32Array (its backing ArrayBuffer is plain,
+      // satisfying the copyToChannel TS signature that demands ArrayBuffer
+      // rather than ArrayBufferLike).
+      const slice = new Float32Array(channelData[c]!.subarray(0, trimmedLength));
+      trimmed.copyToChannel(slice, c);
+    }
+    return trimmed;
   }
 
   private makeSlot(buffer: AudioBuffer): { source: AudioBufferSourceNode; gain: GainNode } {
@@ -232,10 +288,12 @@ export class AudioEngine {
     source.buffer = tail;
     source.loop = true;
     const gain = this.ctx.createGain();
-    gain.gain.value = 0.85;
+    gain.gain.value = 0.78;
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.value = 600;
+    // 1800Hz keeps melody + warmth audible (was 600Hz, which removed almost
+    // everything and made the tail loop sound like silence to the user).
+    filter.frequency.value = 1800;
     source.connect(filter);
     filter.connect(gain);
     gain.connect(this.master);

@@ -71,7 +71,7 @@ export async function startScene(audioCtx?: AudioContext): Promise<SceneRuntime>
   engine.setEvents({
     onSongStart: (songId, startedAtMs, durationSec) => {
       useStore.getState().setPlayback({ isPlaying: true, currentSongId: songId });
-      useStore.getState().setSongStarted(songId, startedAtMs);
+      useStore.getState().setSongStarted(songId, startedAtMs, durationSec);
       setMediaSessionMetadata({ title: 'Hero Syndrome — current scene' });
       setMediaSessionPlaybackState('playing');
       // Restart feature extractor for the new song

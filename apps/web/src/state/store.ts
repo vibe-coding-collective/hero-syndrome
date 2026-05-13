@@ -64,7 +64,7 @@ export interface AppState extends SessionSlice, PlaybackSlice, SensorsSlice, Epi
   setStateVector: (sv: StateVector) => void;
   appendSong: (s: PlayedSong) => void;
   setSongMeasured: (songId: string, features: MeasuredFeatures) => void;
-  setSongStarted: (songId: string, startedAt: number) => void;
+  setSongStarted: (songId: string, startedAt: number, durationSec?: number) => void;
   resetSession: () => void;
 }
 
@@ -99,9 +99,16 @@ export const useStore = create<AppState>((set) => ({
     set((p) => ({
       songs: p.songs.map((s) => (s.songId === songId ? { ...s, measuredFeatures: features } : s)),
     })),
-  setSongStarted: (songId, startedAt) =>
+  setSongStarted: (songId, startedAt, durationSec) =>
     set((p) => ({
-      songs: p.songs.map((s) => (s.songId === songId ? { ...s, startedAt } : s)),
+      songs: p.songs.map((s) => (s.songId === songId ? {
+        ...s,
+        startedAt,
+        // The audio engine's actual buffer.duration (post-silence-trim) is the
+        // source of truth for "how long this song will play". Worker-reported
+        // durationSec may include trailing silence that we've now stripped.
+        ...(durationSec != null ? { durationSec } : {}),
+      } : s)),
     })),
   resetSession: () => set({ ...INITIAL_STATE }),
 }));

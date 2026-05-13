@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { AUDIO_RAMP_SEC } from '../audio/engine';
 import { useStore } from '../state/store';
 import {
   buildDialViewModelFromSong,
@@ -501,9 +502,16 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
     return <WaitingDial />;
   }
 
+  // Ring completes at the moment the audio crossfade *begins*, not at the
+  // audio engine's swap event (end of crossfade). That way the user sees the
+  // ring hit 100% exactly as the new song starts fading in — which is what
+  // they perceive as "the songs switching from one to another". After that,
+  // the ring sits at 100% for AUDIO_RAMP_SEC while the crossfade plays out,
+  // and resets to 0 when currentSongId flips to the new song.
+  const effectiveDurationSec = Math.max(1, currentSong ? currentSong.durationSec - AUDIO_RAMP_SEC : 0);
   const playbackProgress =
     currentSong?.startedAt != null && isPlaying
-      ? clamp01((progressClock - currentSong.startedAt) / (currentSong.durationSec * 1000))
+      ? clamp01((progressClock - currentSong.startedAt) / (effectiveDurationSec * 1000))
       : null;
   const musicProgressMode: MusicProgressMode = playbackProgress != null ? 'playback' : 'idle';
   const musicProgressValue = playbackProgress ?? 0;
