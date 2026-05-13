@@ -1,9 +1,14 @@
 import { create } from 'zustand';
 import type {
+  BodyActivity,
   Composition,
   CosmicSnapshot,
+  LocationType,
   MeasuredFeatures,
+  PhraseOfTheMoment,
+  RenderPlan,
   SongMetadata,
+  StackedMeta,
   StateVector,
 } from '@hero-syndrome/shared';
 
@@ -16,6 +21,14 @@ export interface PlayedSong {
   startedAt?: number;
   measuredFeatures?: MeasuredFeatures;
   source: 'prelude' | 'generated';
+  /** Dial-relevant fields, populated for generated songs (server-derived).
+   *  Preludes don't carry these and the dial stays in waiting state for them. */
+  stateVector?: StateVector;
+  stacked?: StackedMeta;
+  renderPlan?: RenderPlan;
+  locationType?: LocationType;
+  bodyActivity?: BodyActivity;
+  phraseOfTheMoment?: PhraseOfTheMoment;
 }
 
 export interface SessionSlice {

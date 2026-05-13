@@ -1,16 +1,8 @@
-import { type PointerEvent, useEffect, useId, useMemo, useRef, useState } from 'react';
-import type { StateVector } from '@hero-syndrome/shared';
-import { dialDemoSnapshots } from '../data/dynamicDialDemo';
-import { GeolocationSensor } from '../sensors/geolocation';
-import { MotionSensor } from '../sensors/motion';
-import { StateAggregator } from '../state/aggregator';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useStore } from '../state/store';
-import { snapshotFromStateVector } from '../prototype/dialDataAdapter';
 import {
-  buildCompositionReadyPackage,
-  buildDialViewModel,
-  type DialOption,
-  type DialOptionKind,
+  buildDialViewModelFromSong,
+  type DialViewModel,
 } from '../prototype/dialViewModel';
 import { Orb } from './ui/orb';
 
@@ -26,7 +18,6 @@ const ASSETS = {
   selectionInnerCore: '/prototype-dial/selection-inner-core.svg',
   selectionLine: '/prototype-dial/selection-line.svg',
   selectionPointer: '/prototype-dial/selection-pointer.svg',
-  selectionSun: '/prototype-dial/selection-sun.svg',
 } as const;
 
 const FRAME = { width: 393, height: 852 };
@@ -47,160 +38,15 @@ const BUTTON_TEXT_RADIUS = 84;
 const BUTTON_ARC_SPAN = 92;
 const SELECTION_CONTROL_RING_SIZE = 213;
 const SELECTION_POINTER = { width: 85.336, height: 111.5 };
+const OVERLAY_DURATION_MS = 1800;
 
-const DEMO_SNAPSHOT = dialDemoSnapshots[0]!;
-const INITIAL_MODEL = buildDialViewModel(DEMO_SNAPSHOT);
-const ENABLE_DIAL_MUSIC_GENERATION = false;
-
-interface SelectionDrag {
-  startPointerAngle: number;
-  startRotation: number;
-}
-
-type LiveDataStatus = 'demo' | 'starting' | 'live' | 'error';
 type MusicProgressMode = 'idle' | 'loading' | 'playback';
-type SimulationKind = 'day' | 'night';
-type SimulationStatus = 'idle' | 'loading' | 'playing' | 'missing' | 'blocked' | 'complete';
 
-interface LiveDataRuntime {
-  aggregator: StateAggregator;
-  geolocation: GeolocationSensor;
-  motion: MotionSensor;
+interface DiskUiPrototypeProps {
+  /** AnalyserNode from the parent AudioEngine. When present and audio is
+   *  playing, drives the Orb's reactive level. */
+  analyser: AnalyserNode | null;
 }
-
-interface SimulatedPlayback {
-  kind: SimulationKind | null;
-  status: SimulationStatus;
-  label: string;
-  startedAt: number | null;
-  durationSec: number;
-}
-
-type AudioContextWindow = Window & { webkitAudioContext?: typeof AudioContext };
-
-const SIMULATION_AUDIO: Record<SimulationKind, string> = {
-  day: '/prototype-dial/audio/day-demo.mp3',
-  night: '/prototype-dial/audio/night-demo.mp3',
-};
-
-const SIMULATION_STATE_VECTORS: Record<SimulationKind, StateVector> = {
-  day: {
-    timestamp: '2026-05-13T13:20:00+08:00',
-    time: {
-      hour: 13,
-      phase: 'afternoon',
-      dayOfWeek: 'Wednesday',
-    },
-    weather: {
-      tempC: 28,
-      feelsLikeC: 31,
-      humidityPct: 68,
-      condition: 'clear',
-      precipitationMmHr: 0,
-      cloudCoverPct: 18,
-      windMps: 3.2,
-      isDay: true,
-      sunriseProximityMin: 440,
-      sunsetProximityMin: -300,
-    },
-    location: {
-      speedMps: 1.1,
-      bodyActivity: 'walking',
-      place: {
-        category: 'amenity',
-        type: 'cafe',
-        name: 'Sun Room Cafe',
-      },
-      road: {
-        class: 'pedestrian',
-        name: 'Garden Walk',
-      },
-      nearby: [
-        { category: 'leisure', type: 'park', name: 'Harbour Garden', distanceM: 34 },
-        { category: 'amenity', type: 'cafe', name: 'Sun Room Cafe', distanceM: 8 },
-        { category: 'shop', type: 'bakery', name: 'Morning Oven', distanceM: 52 },
-        { category: 'tourism', type: 'gallery', name: 'White Wall Space', distanceM: 88 },
-        { category: 'amenity', type: 'library', name: 'City Reading Room', distanceM: 132 },
-        { category: 'leisure', type: 'fitness_centre', name: 'Midday Studio', distanceM: 166 },
-        { category: 'railway', type: 'station', name: 'Central Station', distanceM: 248 },
-        { category: 'shop', type: 'mall', name: 'Arcade Walk', distanceM: 310 },
-      ],
-      neighborhood: 'Central',
-      city: 'Hong Kong',
-      country: 'Hong Kong',
-      countryCode: 'HK',
-    },
-    movement: {
-      intensityNormalized: 0.36,
-      pattern: 'steady',
-    },
-    cosmic: {
-      spaceWeather: {
-        kIndex: 2,
-        solarWindSpeedKmS: 382,
-        solarWindDensity: 4.8,
-      },
-    },
-  },
-  night: {
-    timestamp: '2026-05-13T22:45:00+08:00',
-    time: {
-      hour: 22,
-      phase: 'night',
-      dayOfWeek: 'Wednesday',
-    },
-    weather: {
-      tempC: 23,
-      feelsLikeC: 25,
-      humidityPct: 86,
-      condition: 'rain',
-      precipitationMmHr: 1.6,
-      cloudCoverPct: 91,
-      windMps: 5.4,
-      isDay: false,
-      sunriseProximityMin: 1000,
-      sunsetProximityMin: 265,
-    },
-    location: {
-      speedMps: 0.2,
-      bodyActivity: 'still',
-      place: {
-        category: 'bar',
-        type: 'bar',
-        name: 'Low Light Room',
-      },
-      road: {
-        class: 'residential',
-        name: 'Mercury Lane',
-      },
-      nearby: [
-        { category: 'amenity', type: 'bar', name: 'Low Light Room', distanceM: 10 },
-        { category: 'amenity', type: 'restaurant', name: 'Night Kitchen', distanceM: 46 },
-        { category: 'tourism', type: 'gallery', name: 'Blue Hour Gallery', distanceM: 74 },
-        { category: 'shop', type: 'convenience', name: 'Late Store', distanceM: 96 },
-        { category: 'railway', type: 'station', name: 'Tin Hau', distanceM: 164 },
-        { category: 'leisure', type: 'park', name: 'Temple Garden', distanceM: 226 },
-        { category: 'amenity', type: 'cafe', name: 'After Midnight', distanceM: 282 },
-        { category: 'building', type: 'apartments', name: 'Mercury House', distanceM: 340 },
-      ],
-      neighborhood: 'Tin Hau',
-      city: 'Hong Kong',
-      country: 'Hong Kong',
-      countryCode: 'HK',
-    },
-    movement: {
-      intensityNormalized: 0.14,
-      pattern: 'still',
-    },
-    cosmic: {
-      spaceWeather: {
-        kIndex: 4,
-        solarWindSpeedKmS: 438,
-        solarWindDensity: 7.1,
-      },
-    },
-  },
-};
 
 function normalizeDegrees(value: number): number {
   return ((value % 360) + 360) % 360;
@@ -209,31 +55,6 @@ function normalizeDegrees(value: number): number {
 function clamp01(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.min(1, Math.max(0, value));
-}
-
-function signedDistanceFromNeedle(value: number): number {
-  const normalized = normalizeDegrees(value);
-  return normalized > 180 ? normalized - 360 : normalized;
-}
-
-function selectedIndexForRotation(rotation: number, itemCount: number): number {
-  const step = 360 / itemCount;
-  let bestIndex = 0;
-  let bestDistance = Number.POSITIVE_INFINITY;
-
-  for (let index = 0; index < itemCount; index += 1) {
-    const distance = Math.abs(signedDistanceFromNeedle(rotation + index * step));
-    if (distance < bestDistance) {
-      bestDistance = distance;
-      bestIndex = index;
-    }
-  }
-
-  return bestIndex;
-}
-
-function snapRotationForIndex(index: number, itemCount: number): number {
-  return -(index * (360 / itemCount));
 }
 
 function hourToAngle(hour: number): number {
@@ -250,20 +71,6 @@ function pointOnOrbit(angle: number, radius: number): { x: number; y: number } {
 
 function formatHour(hour: number): string {
   return `${Math.round(hour).toString().padStart(2, '0')}:00`;
-}
-
-function pointerAngle(event: PointerEvent<SVGElement>): number {
-  const svg = event.currentTarget.ownerSVGElement ?? (event.currentTarget as SVGSVGElement);
-  const rect = svg.getBoundingClientRect();
-  const scaleX = FRAME.width / rect.width;
-  const scaleY = FRAME.height / rect.height;
-  const x = (event.clientX - rect.left) * scaleX;
-  const y = (event.clientY - rect.top) * scaleY;
-  return (Math.atan2(x - DIAL_CENTER.x, -(y - DIAL_CENTER.y)) * 180) / Math.PI;
-}
-
-function hourFromPointer(event: PointerEvent<SVGElement>): number {
-  return Math.round(normalizeDegrees(pointerAngle(event)) / 15 + 12) % 24;
 }
 
 function arcPath(radius: number, midAngle: number, span = 20): string {
@@ -341,44 +148,6 @@ function annularArcPath(innerRadius: number, outerRadius: number, midAngle: numb
   ].join(' ');
 }
 
-function shortTail(value: string): string {
-  return value.slice(Math.max(0, value.length - 3));
-}
-
-function shortHead(value: string): string {
-  return value.slice(0, 3);
-}
-
-function affordanceLabel(options: DialOption[], index: number): string {
-  const previous = options[(index - 1 + options.length) % options.length]?.label ?? '';
-  const current = options[index]?.label ?? '';
-  const next = options[(index + 1) % options.length]?.label ?? '';
-  return `${shortTail(previous)} . ${current} . ${shortHead(next)}`;
-}
-
-function playDialTick(): void {
-  const audioWindow = window as AudioContextWindow;
-  const AudioContextClass = window.AudioContext || audioWindow.webkitAudioContext;
-  if (!AudioContextClass) return;
-
-  const audio = new AudioContextClass();
-  const oscillator = audio.createOscillator();
-  const gain = audio.createGain();
-
-  oscillator.type = 'triangle';
-  oscillator.frequency.setValueAtTime(760, audio.currentTime);
-  oscillator.frequency.exponentialRampToValueAtTime(260, audio.currentTime + 0.055);
-  gain.gain.setValueAtTime(0.0001, audio.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.085, audio.currentTime + 0.004);
-  gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + 0.065);
-
-  oscillator.connect(gain);
-  gain.connect(audio.destination);
-  oscillator.start();
-  oscillator.stop(audio.currentTime + 0.07);
-  oscillator.onended = () => void audio.close();
-}
-
 function ClockMarks() {
   return (
     <g className="phone-dial__clock-marks">
@@ -417,32 +186,17 @@ function MusicProgressRing(props: {
       className={`phone-dial__music-progress phone-dial__music-progress--${props.mode}`}
       role="img"
     >
-      <path
-        className="phone-dial__music-progress-backing"
-        d={trackPath}
-        fill="none"
-      />
-      <path
-        className="phone-dial__music-progress-track"
-        d={trackPath}
-        fill="none"
-      />
+      <path className="phone-dial__music-progress-backing" d={trackPath} fill="none" />
+      <path className="phone-dial__music-progress-track" d={trackPath} fill="none" />
       {props.mode !== 'idle' ? (
-        <path
-          className="phone-dial__music-progress-fill"
-          d={fillPath}
-          fill="none"
-        />
+        <path className="phone-dial__music-progress-fill" d={fillPath} fill="none" />
       ) : null}
     </g>
   );
 }
 
 function CenterOrb(props: {
-  activity: DialOption;
-  bpm: number;
   colors: [string, string];
-  intensity: number;
   isMusicPlaying: boolean;
   musicLevel: number;
   seed: number;
@@ -451,6 +205,8 @@ function CenterOrb(props: {
   const clipId = `center-orb-clip-${rawClipId.replace(/:/g, '')}`;
   const orbState = props.isMusicPlaying ? 'talking' : null;
   const orbKey = `${orbState ?? 'idle'}-${props.colors[0]}-${props.colors[1]}-${props.seed}`;
+  const levelRef = useRef(props.musicLevel);
+  levelRef.current = props.musicLevel;
 
   return (
     <g className="phone-dial__center-orb">
@@ -472,9 +228,10 @@ function CenterOrb(props: {
             agentState={orbState}
             className="phone-dial__orb-canvas"
             colors={props.colors}
+            getOutputVolume={() => levelRef.current}
             key={orbKey}
             seed={props.seed}
-            volumeMode="auto"
+            volumeMode="manual"
           />
         </div>
       </foreignObject>
@@ -490,7 +247,13 @@ function OrbBezel() {
         d={annularRingPath(ORB_BEZEL_INNER_RADIUS, ORB_BEZEL_OUTER_RADIUS)}
         fillRule="evenodd"
       />
-      <circle className="phone-dial__orb-bezel-inner-edge" cx={DIAL_CENTER.x} cy={DIAL_CENTER.y} fill="none" r={ORB_BEZEL_INNER_RADIUS} />
+      <circle
+        className="phone-dial__orb-bezel-inner-edge"
+        cx={DIAL_CENTER.x}
+        cy={DIAL_CENTER.y}
+        fill="none"
+        r={ORB_BEZEL_INNER_RADIUS}
+      />
     </g>
   );
 }
@@ -510,7 +273,10 @@ function NightWeatherIcon() {
 
 function MoonIndicator(props: { x: number; y: number }) {
   return (
-    <g className="phone-dial__moon-indicator" transform={`translate(${props.x - 39} ${props.y - 39})`}>
+    <g
+      className="phone-dial__moon-indicator phone-dial__celestial-indicator"
+      transform={`translate(${props.x - 39} ${props.y - 39})`}
+    >
       <circle className="phone-dial__moon-glow" cx="39" cy="39" r="34" />
       <circle className="phone-dial__moon-disc" cx="39" cy="39" r="22" />
       <circle className="phone-dial__moon-shadow" cx="49" cy="31" r="23" />
@@ -523,7 +289,10 @@ function MoonIndicator(props: { x: number; y: number }) {
 
 function SunIndicator(props: { x: number; y: number }) {
   return (
-    <g className="phone-dial__sun-indicator" transform={`translate(${props.x - 39} ${props.y - 39})`}>
+    <g
+      className="phone-dial__sun-indicator phone-dial__celestial-indicator"
+      transform={`translate(${props.x - 39} ${props.y - 39})`}
+    >
       <circle className="phone-dial__sun-glow" cx="39" cy="39" r="34" />
       <circle className="phone-dial__sun-disc" cx="39" cy="39" r="23" />
       <g className="phone-dial__sun-grain">
@@ -541,32 +310,22 @@ function SunIndicator(props: { x: number; y: number }) {
   );
 }
 
-function SelectionOverlay(props: {
-  kind: DialOptionKind;
-  options: DialOption[];
-  onClose: () => void;
-  onPointerDown: (event: PointerEvent<SVGSVGElement>) => void;
-  onPointerMove: (event: PointerEvent<SVGSVGElement>) => void;
-  onPointerUp: () => void;
-  rotation: number;
-  selectedIndex: number;
-  orbColors: [string, string];
-  intensity: number;
-  bpm: number;
-}) {
-  const step = 360 / props.options.length;
-  const selected = props.options[props.selectedIndex] ?? props.options[0]!;
-  const selectedArcId = `${props.kind}-selected-arc`;
+/** Read-only selection overlay that auto-plays a spin-in animation at each
+ *  song boundary. No pointer handlers — the wheel rotates from a full
+ *  revolution back to 0 via CSS keyframes, landing on the song's top-scored
+ *  option (always at index 0 in the option list). */
+function SelectionOverlay({ model }: { model: DialViewModel }) {
+  const options = model.locationOptions;
+  const step = options.length > 0 ? 360 / options.length : 0;
+  const selected = options[0];
+  if (!selected) return null;
+  const selectedArcId = `location-selected-arc`;
 
   return (
     <div className="phone-dial__location-overlay">
       <svg
-        aria-label={`${props.kind} selection dial: ${selected.label}`}
+        aria-label={`Selection dial: ${selected.label}`}
         className="phone-dial__location-artboard"
-        onPointerCancel={props.onPointerUp}
-        onPointerDown={props.onPointerDown}
-        onPointerMove={props.onPointerMove}
-        onPointerUp={props.onPointerUp}
         role="img"
         viewBox={`0 0 ${FRAME.width} ${FRAME.height}`}
       >
@@ -576,30 +335,31 @@ function SelectionOverlay(props: {
 
         <image href={ASSETS.selectionLine} height="1" opacity="0.4" width="407" x="-10" y={DIAL_CENTER.y} />
         <image href={ASSETS.selectionDashRing} height="330" opacity="0.9" width="330" x="31.5" y="261" />
-        <image href={ASSETS.selectionSun} height="78" width="78" x="18" y="298" />
 
-        <image href={ASSETS.selectionInnerRing} height="161" width="160" x={DIAL_CENTER.x - 80} y={DIAL_CENTER.y - 80.5} />
-        <image href={ASSETS.selectionInnerCore} height="83" width="83" x={DIAL_CENTER.x - 41.5} y={DIAL_CENTER.y - 41.5} />
-        <CenterOrb
-          activity={selected}
-          bpm={props.bpm}
-          colors={props.orbColors}
-          intensity={props.intensity}
-          isMusicPlaying={false}
-          musicLevel={0}
-          seed={props.bpm + selected.id.length}
+        <image
+          href={ASSETS.selectionInnerRing}
+          height="161"
+          width="160"
+          x={DIAL_CENTER.x - 80}
+          y={DIAL_CENTER.y - 80.5}
         />
-        <OrbBezel />
+        <image
+          href={ASSETS.selectionInnerCore}
+          height="83"
+          width="83"
+          x={DIAL_CENTER.x - 41.5}
+          y={DIAL_CENTER.y - 41.5}
+        />
 
         <g className="phone-dial__location-list">
-          {props.options.map((option, index) => {
-            const angle = normalizeDegrees(index * step + props.rotation);
-            const pathId = `${props.kind}-option-${index}`;
+          {options.map((option, index) => {
+            const angle = index * step;
+            const pathId = `location-option-${index}`;
             const separatorPathId = `${pathId}-separator`;
             return (
-              <g className={index === props.selectedIndex ? 'is-selected' : undefined} key={option.id}>
+              <g className={index === 0 ? 'is-selected' : undefined} key={option.id}>
                 <defs>
-                  <path id={pathId} d={arcPath(119, angle, Math.min(42, step * 0.86))} />
+                  <path id={pathId} d={arcPath(LOCATION_LABEL_RADIUS, angle, Math.min(42, step * 0.86))} />
                   <path id={separatorPathId} d={arcPath(LOCATION_LABEL_RADIUS, angle + step / 2, 8)} />
                 </defs>
                 <text className="phone-dial__location-option-label">
@@ -624,16 +384,7 @@ function SelectionOverlay(props: {
           x={DIAL_CENTER.x - SELECTION_CONTROL_RING_SIZE / 2}
           y={DIAL_CENTER.y - SELECTION_CONTROL_RING_SIZE / 2}
         />
-        <g
-          aria-label={`Confirm ${props.kind}: ${selected.label}`}
-          className="phone-dial__location-confirm"
-          onPointerDown={(event) => {
-            event.stopPropagation();
-            props.onClose();
-          }}
-          role="button"
-        >
-          <rect className="phone-dial__confirm-hit-area" height="140" width="112" x={DIAL_CENTER.x - 56} y={DIAL_CENTER.y - LOCATION_LABEL_RADIUS - 22} />
+        <g className="phone-dial__location-confirm" aria-hidden>
           <image
             href={ASSETS.selectionPointer}
             height={SELECTION_POINTER.height}
@@ -652,69 +403,37 @@ function SelectionOverlay(props: {
   );
 }
 
-export default function DiskUiPrototype() {
-  const runtimeRef = useRef<LiveDataRuntime | null>(null);
-  const simulationAudioRef = useRef<HTMLAudioElement | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const audioSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
-  const audioAnalyserRef = useRef<AnalyserNode | null>(null);
-  const audioAnalysisDataRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
-  const simulationTimerRef = useRef<number | null>(null);
-  const simulationRunRef = useRef(0);
-  const liveStateVector = useStore((state) => state.stateVector);
-  const permissionsGranted = useStore((state) => state.permissionsGranted);
+function WaitingDial() {
+  return (
+    <section className="phone-dial phone-dial--waiting" aria-label="Preparing the scene">
+      <div className="phone-dial__waiting-shell">
+        <div className="phone-dial__waiting-orb">
+          <Orb agentState="thinking" className="phone-dial__orb-canvas" colors={['#cadcfc', '#7783c4']} />
+        </div>
+        <p className="phone-dial__waiting-label">preparing the scene…</p>
+      </div>
+    </section>
+  );
+}
+
+export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
   const songs = useStore((state) => state.songs);
   const currentSongId = useStore((state) => state.currentSongId);
   const isPlaying = useStore((state) => state.isPlaying);
-  const generationLatencyEMA = useStore((state) => state.generationLatencyEMA);
   const [progressClock, setProgressClock] = useState(() => performance.now());
-  const [backgroundBusyUntil, setBackgroundBusyUntil] = useState(0);
-  const [backgroundBusyStartedAt, setBackgroundBusyStartedAt] = useState(0);
   const [musicOrbLevel, setMusicOrbLevel] = useState(0);
-  const [simulationKind, setSimulationKind] = useState<SimulationKind | null>(null);
-  const [simulatedPlayback, setSimulatedPlayback] = useState<SimulatedPlayback>({
-    kind: null,
-    status: 'idle',
-    label: 'LOCAL MUSIC',
-    startedAt: null,
-    durationSec: 30,
-  });
-  const [hourOverride, setHourOverride] = useState<number | null>(null);
-  const [liveDataStatus, setLiveDataStatus] = useState<LiveDataStatus>('demo');
-  const [activeOverlay, setActiveOverlay] = useState<DialOptionKind | null>(null);
-  const [selectionDrag, setSelectionDrag] = useState<SelectionDrag | null>(null);
-  const [overlayRotation, setOverlayRotation] = useState(0);
-  const [selectedLocationId, setSelectedLocationId] = useState(INITIAL_MODEL.locationOptions[0]!.id);
-  const [selectedActivityId, setSelectedActivityId] = useState(INITIAL_MODEL.activityOptions[0]!.id);
+  const [overlayActive, setOverlayActive] = useState(false);
+  const lastShownSongIdRef = useRef<string | null>(null);
 
-  const simulatedStateVector = simulationKind ? SIMULATION_STATE_VECTORS[simulationKind] : null;
-  const activeStateVector = simulatedStateVector ?? liveStateVector;
-  const snapshot = useMemo(
-    () => (activeStateVector ? snapshotFromStateVector(activeStateVector, DEMO_SNAPSHOT) : DEMO_SNAPSHOT),
-    [activeStateVector],
+  const currentSong = useMemo(
+    () => (currentSongId ? songs.find((song) => song.songId === currentSongId) ?? null : null),
+    [currentSongId, songs],
   );
-  const model = useMemo(() => buildDialViewModel(snapshot, hourOverride ?? undefined), [hourOverride, snapshot]);
-  const dataSourceLabel = simulationKind ? `${simulationKind.toUpperCase()} SIM` : liveStateVector ? 'LIVE DATA' : 'DEMO DATA';
-  const liveControlLabel = liveDataStatus === 'starting'
-    ? 'STARTING DATA'
-    : liveStateVector
-      ? 'LIVE DATA ON'
-      : liveDataStatus === 'error'
-        ? 'DATA ERROR'
-        : 'START DATA';
-  const permissionLabel = `${permissionsGranted.motion ? 'MOTION' : 'NO MOTION'} / ${permissionsGranted.geolocation ? 'GPS' : 'NO GPS'}`;
-
-  useEffect(() => {
-    return () => {
-      stopSimulatedAudio(false);
-      runtimeRef.current?.aggregator.stop();
-      runtimeRef.current?.motion.stop();
-      runtimeRef.current?.geolocation.stop();
-      runtimeRef.current = null;
-      audioContextRef.current?.close().catch(() => undefined);
-      audioContextRef.current = null;
-    };
-  }, []);
+  const model = useMemo(
+    () => (currentSong ? buildDialViewModelFromSong(currentSong) : null),
+    [currentSong],
+  );
+  const modelSongId = model?.songId ?? null;
 
   useEffect(() => {
     const timer = window.setInterval(() => setProgressClock(performance.now()), 250);
@@ -722,420 +441,72 @@ export default function DiskUiPrototype() {
   }, []);
 
   useEffect(() => {
+    if (!analyser) {
+      setMusicOrbLevel(0);
+      return;
+    }
+    const buffer = new Uint8Array(new ArrayBuffer(analyser.fftSize));
     const timer = window.setInterval(() => {
-      const analyser = audioAnalyserRef.current;
-      const data = audioAnalysisDataRef.current;
-      if (!analyser || !data || simulatedPlayback.status !== 'playing') {
+      if (!isPlaying) {
         setMusicOrbLevel((current) => (current > 0.01 ? current * 0.7 : 0));
         return;
       }
-
-      analyser.getByteTimeDomainData(data);
+      analyser.getByteTimeDomainData(buffer);
       let sum = 0;
-      for (const sample of data) {
+      for (const sample of buffer) {
         const centered = (sample - 128) / 128;
         sum += centered * centered;
       }
-      const rms = Math.sqrt(sum / data.length);
+      const rms = Math.sqrt(sum / buffer.length);
       const nextLevel = clamp01(rms * 4.8);
-      setMusicOrbLevel((current) => (Math.abs(current - nextLevel) < 0.01 ? current : current * 0.55 + nextLevel * 0.45));
+      setMusicOrbLevel((current) =>
+        Math.abs(current - nextLevel) < 0.01 ? current : current * 0.55 + nextLevel * 0.45,
+      );
     }, 80);
-
     return () => window.clearInterval(timer);
-  }, [simulatedPlayback.status]);
+  }, [analyser, isPlaying]);
 
   useEffect(() => {
-    if (!model.locationOptions.some((option) => option.id === selectedLocationId)) {
-      setSelectedLocationId(model.locationOptions[0]!.id);
-    }
-  }, [model.locationOptions, selectedLocationId]);
+    if (!modelSongId) return;
+    if (lastShownSongIdRef.current === modelSongId) return;
+    const isFirstReveal = lastShownSongIdRef.current === null;
+    lastShownSongIdRef.current = modelSongId;
+    if (isFirstReveal) return;
+    setOverlayActive(true);
+    const hideTimer = window.setTimeout(() => setOverlayActive(false), OVERLAY_DURATION_MS);
+    return () => window.clearTimeout(hideTimer);
+  }, [modelSongId]);
 
-  useEffect(() => {
-    if (!model.activityOptions.some((option) => option.id === selectedActivityId)) {
-      setSelectedActivityId(model.activityOptions[0]!.id);
-    }
-  }, [model.activityOptions, selectedActivityId]);
+  if (!model) {
+    return <WaitingDial />;
+  }
 
-  const selectedLocationIndex = Math.max(0, model.locationOptions.findIndex((option) => option.id === selectedLocationId));
-  const selectedActivityIndex = Math.max(0, model.activityOptions.findIndex((option) => option.id === selectedActivityId));
-  const selectedLocation = model.locationOptions[selectedLocationIndex] ?? model.locationOptions[0]!;
-  const selectedActivity = model.activityOptions[selectedActivityIndex] ?? model.activityOptions[0]!;
-  const compositionPackage = useMemo(
-    () => buildCompositionReadyPackage(model, selectedLocation, selectedActivity, {
-      musicEnabled: ENABLE_DIAL_MUSIC_GENERATION,
-    }),
-    [model, selectedActivity, selectedLocation],
-  );
+  const playbackProgress =
+    currentSong?.startedAt != null && isPlaying
+      ? clamp01((progressClock - currentSong.startedAt) / (currentSong.durationSec * 1000))
+      : null;
+  const musicProgressMode: MusicProgressMode = playbackProgress != null ? 'playback' : 'idle';
+  const musicProgressValue = playbackProgress ?? 0;
 
   const hourAngle = hourToAngle(model.hour);
   const stateTextAngle = normalizeDegrees(hourAngle - 38);
-  const sunPoint = useMemo(() => pointOnOrbit(hourAngle, SUN_ORBIT_RADIUS), [hourAngle]);
-  const sunrisePoint = useMemo(() => pointOnOrbit(hourToAngle(model.sunriseHour), SUN_ORBIT_RADIUS), [model.sunriseHour]);
-  const sunsetPoint = useMemo(() => pointOnOrbit(hourToAngle(model.sunsetHour), SUN_ORBIT_RADIUS), [model.sunsetHour]);
-  const topButtonLabel = affordanceLabel(model.locationOptions, selectedLocationIndex);
-  const bottomButtonLabel = affordanceLabel(model.activityOptions, selectedActivityIndex);
-  const currentSong = useMemo(
-    () => (currentSongId ? songs.find((song) => song.songId === currentSongId) : songs.at(-1)) ?? null,
-    [currentSongId, songs],
-  );
-  const simulatedPlaybackProgress = simulatedPlayback.status === 'playing' && simulatedPlayback.startedAt != null
-    ? clamp01((progressClock - simulatedPlayback.startedAt) / (simulatedPlayback.durationSec * 1000))
-    : null;
-  const storePlaybackProgress = currentSong?.startedAt != null && isPlaying
-    ? clamp01((progressClock - currentSong.startedAt) / (currentSong.durationSec * 1000))
-    : null;
-  const playbackProgress = simulatedPlaybackProgress ?? storePlaybackProgress;
-  const musicGenerationPending = ENABLE_DIAL_MUSIC_GENERATION && !isPlaying && Boolean(liveStateVector);
-  const simulationLoading = simulatedPlayback.status === 'loading';
-  const backgroundWorkPending = liveDataStatus === 'starting' || simulationLoading || musicGenerationPending || progressClock < backgroundBusyUntil;
-  const musicProgressMode: MusicProgressMode = playbackProgress != null
-    ? 'playback'
-    : backgroundWorkPending
-      ? 'loading'
-      : 'idle';
-  const loadingPeriodMs = Math.max(8_000, Math.min(60_000, generationLatencyEMA || 60_000));
-  const scheduledLoadingProgress = backgroundBusyStartedAt > 0 && backgroundBusyUntil > backgroundBusyStartedAt && progressClock < backgroundBusyUntil
-    ? clamp01((progressClock - backgroundBusyStartedAt) / (backgroundBusyUntil - backgroundBusyStartedAt))
-    : null;
-  const musicProgressValue = musicProgressMode === 'playback'
-    ? playbackProgress ?? 0
-    : musicProgressMode === 'loading'
-      ? scheduledLoadingProgress ?? (progressClock % loadingPeriodMs) / loadingPeriodMs
-      : 0;
-  const localMusicLabel = simulatedPlayback.kind ? simulatedPlayback.label : 'LOCAL MUSIC';
-  const musicProgressLabel = musicProgressMode === 'playback'
-    ? `${Math.round(musicProgressValue * 100)}%`
-    : simulatedPlayback.status === 'missing'
-      ? 'MISSING AUDIO'
-      : simulatedPlayback.status === 'blocked'
-        ? 'TAP AGAIN'
-        : simulatedPlayback.status === 'complete'
-          ? 'COMPLETE'
-          : musicProgressMode.toUpperCase();
-  const musicSourceLabel = simulatedPlayback.kind ? localMusicLabel : `MUSIC ${compositionPackage.generation.musicEnabled ? 'ON' : 'OFF'}`;
-  const isMusicOrbPlaying = simulatedPlayback.status === 'playing' || isPlaying;
-  const activeMusicOrbLevel = simulatedPlayback.status === 'playing' ? musicOrbLevel : isPlaying ? 0.42 : 0;
-  const canStopMusic = simulatedPlayback.status === 'loading' || simulatedPlayback.status === 'playing';
-
-  function activeOptions(): DialOption[] {
-    return activeOverlay === 'activity' ? model.activityOptions : model.locationOptions;
-  }
-
-  function activeSelectedIndex(): number {
-    return activeOverlay === 'activity' ? selectedActivityIndex : selectedLocationIndex;
-  }
-
-  function updateHourFromPointer(event: PointerEvent<SVGElement>): void {
-    setHourOverride(hourFromPointer(event));
-  }
-
-  function handlePointerDown(event: PointerEvent<SVGElement>): void {
-    event.currentTarget.setPointerCapture(event.pointerId);
-    updateHourFromPointer(event);
-  }
-
-  function handlePointerMove(event: PointerEvent<SVGElement>): void {
-    if (event.buttons !== 1) return;
-    updateHourFromPointer(event);
-  }
-
-  function handlePointerUp(): void {
-    return;
-  }
-
-  function openSelection(kind: DialOptionKind, event: PointerEvent<SVGGElement>): void {
-    event.stopPropagation();
-    const index = kind === 'activity' ? selectedActivityIndex : selectedLocationIndex;
-    const itemCount = kind === 'activity' ? model.activityOptions.length : model.locationOptions.length;
-    setOverlayRotation(snapRotationForIndex(index, itemCount));
-    setSelectionDrag(null);
-    setActiveOverlay(kind);
-    playDialTick();
-  }
-
-  function updateSelection(nextRotation: number): void {
-    if (!activeOverlay) return;
-    const options = activeOptions();
-    const nextIndex = selectedIndexForRotation(nextRotation, options.length);
-    const nextOption = options[nextIndex];
-    if (!nextOption) return;
-    if (activeOverlay === 'activity') {
-      setSelectedActivityId((current) => {
-        if (current === nextOption.id) return current;
-        playDialTick();
-        return nextOption.id;
-      });
-    } else {
-      setSelectedLocationId((current) => {
-        if (current === nextOption.id) return current;
-        playDialTick();
-        return nextOption.id;
-      });
-    }
-  }
-
-  function handleSelectionPointerDown(event: PointerEvent<SVGSVGElement>): void {
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setSelectionDrag({
-      startPointerAngle: pointerAngle(event),
-      startRotation: overlayRotation,
-    });
-  }
-
-  function handleSelectionPointerMove(event: PointerEvent<SVGSVGElement>): void {
-    if (!selectionDrag) return;
-    const nextRotation = selectionDrag.startRotation + pointerAngle(event) - selectionDrag.startPointerAngle;
-    setOverlayRotation(nextRotation);
-    updateSelection(nextRotation);
-  }
-
-  function handleSelectionPointerUp(): void {
-    if (!selectionDrag) return;
-    setOverlayRotation(snapRotationForIndex(activeSelectedIndex(), activeOptions().length));
-    setSelectionDrag(null);
-  }
-
-  function closeSelectionOverlay(): void {
-    setOverlayRotation(snapRotationForIndex(activeSelectedIndex(), activeOptions().length));
-    setSelectionDrag(null);
-    setActiveOverlay(null);
-    playDialTick();
-  }
-
-  function disconnectAudioAnalysis(resetLevel = true): void {
-    try {
-      audioSourceRef.current?.disconnect();
-    } catch {
-      // The source may already be detached after an audio element is replaced.
-    }
-    try {
-      audioAnalyserRef.current?.disconnect();
-    } catch {
-      // The analyser may already be detached after an audio element is replaced.
-    }
-    audioSourceRef.current = null;
-    audioAnalyserRef.current = null;
-    audioAnalysisDataRef.current = null;
-    if (resetLevel) setMusicOrbLevel(0);
-  }
-
-  function connectAudioAnalysis(audio: HTMLAudioElement): void {
-    const audioWindow = window as AudioContextWindow;
-    const AudioContextClass = window.AudioContext || audioWindow.webkitAudioContext;
-    if (!AudioContextClass) return;
-
-    disconnectAudioAnalysis(false);
-    try {
-      const context = audioContextRef.current ?? new AudioContextClass();
-      audioContextRef.current = context;
-      if (context.state === 'suspended') void context.resume();
-
-      const source = context.createMediaElementSource(audio);
-      const analyser = context.createAnalyser();
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.72;
-      source.connect(analyser);
-      analyser.connect(context.destination);
-
-      audioSourceRef.current = source;
-      audioAnalyserRef.current = analyser;
-      audioAnalysisDataRef.current = new Uint8Array(new ArrayBuffer(analyser.fftSize));
-    } catch {
-      disconnectAudioAnalysis(false);
-    }
-  }
-
-  function stopSimulatedAudio(resetOrb = true): void {
-    if (simulationTimerRef.current != null) {
-      window.clearTimeout(simulationTimerRef.current);
-      simulationTimerRef.current = null;
-    }
-    disconnectAudioAnalysis(resetOrb);
-    const audio = simulationAudioRef.current;
-    if (audio) {
-      audio.pause();
-      audio.removeAttribute('src');
-      audio.load();
-      simulationAudioRef.current = null;
-    }
-  }
-
-  function startSimulation(kind: SimulationKind): void {
-    const runId = simulationRunRef.current + 1;
-    simulationRunRef.current = runId;
-    stopSimulatedAudio();
-    const now = performance.now();
-    const loadingDurationMs = 3_000;
-    const label = kind === 'day' ? 'DAY MUSIC' : 'NIGHT MUSIC';
-    let audioHadError = false;
-
-    setSimulationKind(kind);
-    setHourOverride(null);
-    setBackgroundBusyStartedAt(now);
-    setBackgroundBusyUntil(now + loadingDurationMs);
-    setSimulatedPlayback({
-      kind,
-      status: 'loading',
-      label,
-      startedAt: null,
-      durationSec: 30,
-    });
-
-    const audio = new Audio(SIMULATION_AUDIO[kind]);
-    audio.preload = 'auto';
-    audio.volume = 0;
-    connectAudioAnalysis(audio);
-    simulationAudioRef.current = audio;
-
-    audio.addEventListener('loadedmetadata', () => {
-      if (simulationRunRef.current !== runId) return;
-      const durationSec = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 30;
-      setSimulatedPlayback((current) => ({ ...current, durationSec }));
-    });
-    audio.addEventListener('error', () => {
-      audioHadError = true;
-    });
-    audio.addEventListener('ended', () => {
-      if (simulationRunRef.current !== runId) return;
-      setSimulatedPlayback((current) => ({
-        ...current,
-        status: 'complete',
-        startedAt: null,
-      }));
-    });
-
-    void audio.play()
-      .then(() => {
-        if (simulationRunRef.current !== runId) return;
-        audio.volume = 0;
-      })
-      .catch(() => undefined);
-
-    simulationTimerRef.current = window.setTimeout(() => {
-      if (simulationRunRef.current !== runId) return;
-      simulationTimerRef.current = null;
-
-      if (audioHadError || audio.error) {
-        setSimulatedPlayback((current) => ({
-          ...current,
-          status: 'missing',
-          startedAt: null,
-        }));
-        return;
-      }
-
-      audio.volume = 1;
-      try {
-        audio.currentTime = 0;
-      } catch {
-        // Some browsers disallow seeking before metadata is ready.
-      }
-
-      void audio.play()
-        .then(() => {
-          if (simulationRunRef.current !== runId) return;
-          const durationSec = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 30;
-          setSimulatedPlayback({
-            kind,
-            status: 'playing',
-            label,
-            startedAt: performance.now(),
-            durationSec,
-          });
-        })
-        .catch(() => {
-          if (simulationRunRef.current !== runId) return;
-          setSimulatedPlayback((current) => ({
-            ...current,
-            status: 'blocked',
-            startedAt: null,
-          }));
-        });
-    }, loadingDurationMs);
-  }
-
-  function stopSimulationMusic(): void {
-    if (!canStopMusic) return;
-    simulationRunRef.current += 1;
-    stopSimulatedAudio();
-    setBackgroundBusyStartedAt(0);
-    setBackgroundBusyUntil(0);
-    setSimulatedPlayback((current) => ({
-      ...current,
-      status: 'idle',
-      startedAt: null,
-    }));
-  }
-
-  async function startLiveData(): Promise<void> {
-    if (runtimeRef.current || liveDataStatus === 'starting') return;
-    setLiveDataStatus('starting');
-    const now = performance.now();
-    setBackgroundBusyStartedAt(now);
-    setBackgroundBusyUntil(now + 1_800);
-    try {
-      const motion = new MotionSensor();
-      const motionGranted = await motion.requestPermission();
-      motion.start();
-
-      const geolocation = new GeolocationSensor();
-      geolocation.start();
-      let geoGranted = false;
-      if ('permissions' in navigator) {
-        try {
-          const status = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
-          geoGranted = status.state === 'granted';
-        } catch {
-          geoGranted = false;
-        }
-      }
-      if (!geoGranted && 'geolocation' in navigator) {
-        try {
-          await new Promise<void>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(
-              () => resolve(),
-              () => reject(new Error('geolocation denied')),
-              { enableHighAccuracy: false, timeout: 10_000 },
-            );
-          });
-          geoGranted = true;
-        } catch {
-          geoGranted = false;
-        }
-      }
-
-      useStore.getState().setSensors({
-        permissionsGranted: { motion: motionGranted, geolocation: geoGranted },
-      });
-      const aggregator = new StateAggregator(motion, geolocation);
-      aggregator.start();
-      runtimeRef.current = { aggregator, geolocation, motion };
-      setLiveDataStatus('live');
-    } catch (error) {
-      console.error('[dial] live data failed', error);
-      runtimeRef.current?.aggregator.stop();
-      runtimeRef.current?.motion.stop();
-      runtimeRef.current?.geolocation.stop();
-      runtimeRef.current = null;
-      setLiveDataStatus('error');
-    }
-  }
+  const sunPoint = pointOnOrbit(hourAngle, SUN_ORBIT_RADIUS);
+  const sunrisePoint = pointOnOrbit(hourToAngle(model.sunriseHour), SUN_ORBIT_RADIUS);
+  const sunsetPoint = pointOnOrbit(hourToAngle(model.sunsetHour), SUN_ORBIT_RADIUS);
+  const topButtonLabel = model.locationOptions[0]?.label ?? '';
+  const bottomButtonLabel = model.activityOptions[0]?.label ?? '';
 
   return (
     <section
       className={`phone-dial ${model.isNight ? 'phone-dial--night' : ''}`}
-      aria-label="Hero Syndrome dynamic dial prototype"
-      data-composition-package={compositionPackage.version}
-      data-live-source={dataSourceLabel}
-      data-music-generation={ENABLE_DIAL_MUSIC_GENERATION ? 'enabled' : 'disabled'}
-      data-orb-audio={isMusicOrbPlaying ? 'reactive' : 'idle'}
+      aria-label="Hero Syndrome dial"
       data-orb-colors={model.orbColors.join(',')}
-      data-orb-level={activeMusicOrbLevel.toFixed(3)}
       data-progress-mode={musicProgressMode}
+      data-overlay={overlayActive ? 'active' : 'idle'}
     >
       <svg
         aria-label={`Dial state: ${model.phaseLabel}, ${formatHour(model.hour)}`}
-        className={`phone-dial__artboard ${model.isNight ? 'phone-dial__artboard--night' : ''} ${activeOverlay ? 'phone-dial__artboard--selection-open' : ''}`}
+        className={`phone-dial__artboard ${model.isNight ? 'phone-dial__artboard--night' : ''} ${overlayActive ? 'phone-dial__artboard--selection-open' : ''}`}
         role="img"
         viewBox={`0 0 ${FRAME.width} ${FRAME.height}`}
       >
@@ -1156,8 +527,22 @@ export default function DiskUiPrototype() {
         </defs>
 
         <rect width={FRAME.width} height={FRAME.height} fill="url(#journeyBackground)" />
-        <image href={ASSETS.background} filter="url(#backgroundTone)" height="1399" opacity={model.isNight ? '0.22' : '0.86'} preserveAspectRatio="xMidYMid slice" width="1670" x="-660" y="-282" />
-        <rect width={FRAME.width} height={FRAME.height} fill={model.isNight ? '#0c1027' : '#90B5D0'} opacity={model.isNight ? '0.62' : '0.45'} />
+        <image
+          href={ASSETS.background}
+          filter="url(#backgroundTone)"
+          height="1399"
+          opacity={model.isNight ? '0.22' : '0.86'}
+          preserveAspectRatio="xMidYMid slice"
+          width="1670"
+          x="-660"
+          y="-282"
+        />
+        <rect
+          width={FRAME.width}
+          height={FRAME.height}
+          fill={model.isNight ? '#0c1027' : '#90B5D0'}
+          opacity={model.isNight ? '0.62' : '0.45'}
+        />
 
         {model.isNight ? (
           <>
@@ -1181,13 +566,29 @@ export default function DiskUiPrototype() {
           progress={musicProgressValue}
           startAngle={hourToAngle(model.sunriseHour)}
         />
-        <circle className="phone-dial__sun-orbit" cx={DIAL_CENTER.x} cy={DIAL_CENTER.y} fill="none" r={SUN_ORBIT_RADIUS} />
-        <line className="phone-dial__horizon-line" x1={sunrisePoint.x} x2={sunsetPoint.x} y1={sunrisePoint.y} y2={sunsetPoint.y} />
+        <circle
+          className="phone-dial__sun-orbit"
+          cx={DIAL_CENTER.x}
+          cy={DIAL_CENTER.y}
+          fill="none"
+          r={SUN_ORBIT_RADIUS}
+        />
+        <line
+          className="phone-dial__horizon-line"
+          x1={sunrisePoint.x}
+          x2={sunsetPoint.x}
+          y1={sunrisePoint.y}
+          y2={sunsetPoint.y}
+        />
         <g className="phone-dial__horizon-marker">
           <circle cx={sunrisePoint.x} cy={sunrisePoint.y} r="3" />
           <circle cx={sunsetPoint.x} cy={sunsetPoint.y} r="3" />
-          <text x={sunrisePoint.x + 5} y={sunrisePoint.y - 8}>{formatHour(model.sunriseHour).slice(0, 2)}</text>
-          <text textAnchor="end" x={sunsetPoint.x - 5} y={sunsetPoint.y - 8}>{formatHour(model.sunsetHour).slice(0, 2)}</text>
+          <text x={sunrisePoint.x + 5} y={sunrisePoint.y - 8}>
+            {formatHour(model.sunriseHour).slice(0, 2)}
+          </text>
+          <text textAnchor="end" x={sunsetPoint.x - 5} y={sunsetPoint.y - 8}>
+            {formatHour(model.sunsetHour).slice(0, 2)}
+          </text>
         </g>
 
         <ClockMarks />
@@ -1198,47 +599,38 @@ export default function DiskUiPrototype() {
           </textPath>
         </text>
 
-        {model.isNight ? (
-          <MoonIndicator x={sunPoint.x} y={sunPoint.y} />
-        ) : (
-          <SunIndicator x={sunPoint.x} y={sunPoint.y} />
-        )}
+        {model.isNight ? <MoonIndicator x={sunPoint.x} y={sunPoint.y} /> : <SunIndicator x={sunPoint.x} y={sunPoint.y} />}
 
-        <image href={ASSETS.innerRing} height="161" width="160" x={DIAL_CENTER.x - 80} y={DIAL_CENTER.y - 80.5} />
-        <image href={ASSETS.innerCore} height="83" width="83" x={DIAL_CENTER.x - 41.5} y={DIAL_CENTER.y - 41.5} />
+        <image
+          href={ASSETS.innerRing}
+          height="161"
+          width="160"
+          x={DIAL_CENTER.x - 80}
+          y={DIAL_CENTER.y - 80.5}
+        />
+        <image
+          href={ASSETS.innerCore}
+          height="83"
+          width="83"
+          x={DIAL_CENTER.x - 41.5}
+          y={DIAL_CENTER.y - 41.5}
+        />
         <CenterOrb
-          activity={selectedActivity}
-          bpm={model.bpm}
           colors={model.orbColors}
-          intensity={model.raw.stateVector.movement.intensityNormalized}
-          isMusicPlaying={isMusicOrbPlaying}
-          musicLevel={activeMusicOrbLevel}
-          seed={model.bpm + selectedLocation.label.length}
+          isMusicPlaying={isPlaying}
+          musicLevel={musicOrbLevel}
+          seed={model.bpm + (model.locationOptions[0]?.label.length ?? 0)}
         />
         <OrbBezel />
 
-        <circle
-          aria-label="Drag orbit to change time"
-          className="phone-dial__orbit-hit-area"
-          cx={DIAL_CENTER.x}
-          cy={DIAL_CENTER.y}
-          fill="transparent"
-          onPointerCancel={handlePointerUp}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          r="189"
-        />
-
         <g
-          aria-label={`Place selector: ${selectedLocation.label}`}
-          className="phone-dial__arc-button"
-          onPointerDown={(event) => openSelection('location', event)}
-          role="button"
+          aria-label={`Place: ${topButtonLabel}`}
+          className="phone-dial__arc-button phone-dial__arc-button--readonly"
         >
-          <path className="phone-dial__button-arc-fill" d={annularArcPath(BUTTON_INNER_RADIUS, BUTTON_OUTER_RADIUS, 0, BUTTON_ARC_SPAN)} />
-          <path className="phone-dial__button-hit-area" d={annularArcPath(BUTTON_INNER_RADIUS - 8, BUTTON_OUTER_RADIUS + 8, 0, BUTTON_ARC_SPAN + 10)} />
-          <rect className="phone-dial__button-hit-area" height="36" width="172" x={DIAL_CENTER.x - 86} y={DIAL_CENTER.y - BUTTON_OUTER_RADIUS - 8} />
+          <path
+            className="phone-dial__button-arc-fill"
+            d={annularArcPath(BUTTON_INNER_RADIUS, BUTTON_OUTER_RADIUS, 0, BUTTON_ARC_SPAN)}
+          />
           <text className="phone-dial__selection-label">
             <textPath href="#topSelectionArc" startOffset="50%" textAnchor="middle">
               {topButtonLabel}
@@ -1246,26 +638,29 @@ export default function DiskUiPrototype() {
           </text>
         </g>
 
-        <text className="phone-dial__material-label">
-          <textPath href="#topMaterialArc" startOffset="50%" textAnchor="middle">
-            {model.materialLabel}
-          </textPath>
-        </text>
-        <text className="phone-dial__material-label phone-dial__material-label--bottom">
-          <textPath href="#bottomMaterialArc" startOffset="50%" textAnchor="middle">
-            {model.forceLabel}
-          </textPath>
-        </text>
+        {model.materialLabel ? (
+          <text className="phone-dial__material-label">
+            <textPath href="#topMaterialArc" startOffset="50%" textAnchor="middle">
+              {model.materialLabel}
+            </textPath>
+          </text>
+        ) : null}
+        {model.forceLabel ? (
+          <text className="phone-dial__material-label phone-dial__material-label--bottom">
+            <textPath href="#bottomMaterialArc" startOffset="50%" textAnchor="middle">
+              {model.forceLabel}
+            </textPath>
+          </text>
+        ) : null}
 
         <g
-          aria-label={`Activity selector: ${selectedActivity.label}`}
-          className="phone-dial__arc-button"
-          onPointerDown={(event) => openSelection('activity', event)}
-          role="button"
+          aria-label={`Activity: ${bottomButtonLabel}`}
+          className="phone-dial__arc-button phone-dial__arc-button--readonly"
         >
-          <path className="phone-dial__button-arc-fill" d={annularArcPath(BUTTON_INNER_RADIUS, BUTTON_OUTER_RADIUS, 180, BUTTON_ARC_SPAN)} />
-          <path className="phone-dial__button-hit-area" d={annularArcPath(BUTTON_INNER_RADIUS - 8, BUTTON_OUTER_RADIUS + 8, 180, BUTTON_ARC_SPAN + 10)} />
-          <rect className="phone-dial__button-hit-area" height="36" width="172" x={DIAL_CENTER.x - 86} y={DIAL_CENTER.y + BUTTON_INNER_RADIUS - 8} />
+          <path
+            className="phone-dial__button-arc-fill"
+            d={annularArcPath(BUTTON_INNER_RADIUS, BUTTON_OUTER_RADIUS, 180, BUTTON_ARC_SPAN)}
+          />
           <text className="phone-dial__run-label">
             <textPath href="#bottomSelectionArc" startOffset="50%" textAnchor="middle">
               {bottomButtonLabel}
@@ -1274,72 +669,12 @@ export default function DiskUiPrototype() {
         </g>
 
         <g className="phone-dial__data-readouts">
-          <text x="25" y="710">{dataSourceLabel} / {musicSourceLabel} / {musicProgressLabel}</text>
-          <text x="25" y="728">{model.weatherLabel} / {model.tempLabel}</text>
-          <text x="25" y="746">{model.motionLabel}</text>
-          <text x="25" y="764">{model.placeLabel} / {compositionPackage.music.bpm} BPM / {compositionPackage.music.key}</text>
-          <text x="25" y="782">{selectedLocation.label} / {selectedActivity.label}</text>
+          <text x="25" y="710">{model.weatherLabel} / {model.tempLabel}</text>
+          <text x="25" y="728">{model.motionLabel}</text>
+          <text x="25" y="746">{model.placeLabel} / {model.bpm} BPM / {model.key}</text>
         </g>
       </svg>
-      <div className="phone-dial__live-controls">
-        <div className="phone-dial__sim-controls">
-          <button
-            aria-label="Simulate daytime music"
-            className="phone-dial__sim-button phone-dial__sim-button--day"
-            disabled={simulatedPlayback.status === 'loading' && simulatedPlayback.kind === 'day'}
-            onClick={() => startSimulation('day')}
-            type="button"
-          >
-            DAY MUSIC
-          </button>
-          <button
-            aria-label="Simulate nighttime music"
-            className="phone-dial__sim-button phone-dial__sim-button--night"
-            disabled={simulatedPlayback.status === 'loading' && simulatedPlayback.kind === 'night'}
-            onClick={() => startSimulation('night')}
-            type="button"
-          >
-            NIGHT MUSIC
-          </button>
-          <button
-            aria-label="Stop simulated music"
-            className="phone-dial__sim-button phone-dial__sim-button--stop"
-            disabled={!canStopMusic}
-            onClick={stopSimulationMusic}
-            type="button"
-          >
-            STOP MUSIC
-          </button>
-        </div>
-        <button
-          aria-label="Start live device data"
-          className="phone-dial__live-button"
-          disabled={liveDataStatus === 'starting' || Boolean(liveStateVector)}
-          onClick={() => void startLiveData()}
-          type="button"
-        >
-          {liveControlLabel}
-        </button>
-        <div className="phone-dial__permission-label">{permissionLabel}</div>
-      </div>
-      <script id="hero-dial-composition-package" type="application/json">
-        {JSON.stringify(compositionPackage)}
-      </script>
-      {activeOverlay ? (
-        <SelectionOverlay
-          bpm={model.bpm}
-          intensity={model.raw.stateVector.movement.intensityNormalized}
-          kind={activeOverlay}
-          onClose={closeSelectionOverlay}
-          onPointerDown={handleSelectionPointerDown}
-          onPointerMove={handleSelectionPointerMove}
-          onPointerUp={handleSelectionPointerUp}
-          options={activeOptions()}
-          orbColors={model.orbColors}
-          rotation={overlayRotation}
-          selectedIndex={activeSelectedIndex()}
-        />
-      ) : null}
+      {overlayActive ? <SelectionOverlay model={model} /> : null}
     </section>
   );
 }

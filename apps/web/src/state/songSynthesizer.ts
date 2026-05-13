@@ -73,6 +73,12 @@ export class SongSynthesizer {
         composition: res.composition,
         durationSec: res.durationSec,
         source: 'generated',
+        stateVector: res.stateVector,
+        stacked: res.stacked,
+        renderPlan: res.renderPlan,
+        locationType: res.locationType,
+        bodyActivity: res.bodyActivity,
+        ...(res.phraseOfTheMoment ? { phraseOfTheMoment: res.phraseOfTheMoment } : {}),
       };
       useStore.getState().appendSong(played);
       try {

@@ -1,11 +1,19 @@
-import type { CosmicSnapshot, StateVector, WeatherCondition } from './state';
+import type {
+  BodyActivity,
+  CosmicSnapshot,
+  LocationType,
+  StateVector,
+  WeatherCondition,
+} from './state';
 import type {
   Composition,
   MeasuredFeatures,
+  PhraseOfTheMoment,
   QuantumBytes,
   SongMetadata,
   TransitionIntent,
 } from './song';
+import type { RenderPlan, StackedMeta } from './musicalPicks';
 import type { EpisodeRecord, QuantumReceipt } from './session';
 
 export interface GenerateReq {
@@ -24,6 +32,20 @@ export interface GenerateRes {
   metadata: SongMetadata;
   composition: Composition;
   durationSec: number;
+  /** Snapshot of the state vector that was fed into the Claude prompt for this
+   *  song. Surfaced to the client so the dial UI can visualize "what Claude
+   *  saw" rather than re-deriving from local sensors. */
+  stateVector: StateVector;
+  /** Stacked numeric meta (energy, mood, inspiration). */
+  stacked: StackedMeta;
+  /** BPM + duration budget. */
+  renderPlan: RenderPlan;
+  /** Classified 1-of-50 location. */
+  locationType: LocationType;
+  /** Body activity at song time. */
+  bodyActivity: BodyActivity;
+  /** Optional cosmic-conditioned phrase pair. */
+  phraseOfTheMoment?: PhraseOfTheMoment;
 }
 
 export interface FinalizeReq {

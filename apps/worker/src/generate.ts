@@ -243,6 +243,12 @@ export async function runGenerate(
     metadata,
     composition,
     durationSec,
+    stateVector: stateVectorForRecord,
+    stacked,
+    renderPlan,
+    locationType,
+    bodyActivity,
+    ...(phraseOfTheMoment ? { phraseOfTheMoment } : {}),
   };
 
   const result: GenerateResult = {

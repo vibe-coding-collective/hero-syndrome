@@ -1,11 +1,11 @@
 import type {
-  DialBodyActivity,
-  DialDemoSnapshot,
-  DialLocationType,
-  DialStateVector,
-  DialTimePhase,
-  DialWeatherCondition,
-} from '../data/dynamicDialDemo';
+  BodyActivity,
+  LocationType,
+  StateVector,
+  TimePhase,
+  WeatherCondition,
+} from '@hero-syndrome/shared';
+import type { PlayedSong } from '../state/store';
 
 export type DialOptionKind = 'location' | 'activity';
 
@@ -19,16 +19,16 @@ export interface DialOption {
 }
 
 export interface DialViewModel {
-  snapshotId: string;
+  songId: string;
   hour: number;
-  phase: DialTimePhase;
+  phase: TimePhase;
   phaseLabel: string;
   dayOfWeek: string;
   isNight: boolean;
   sunriseHour: number;
   sunsetHour: number;
   weatherLabel: string;
-  weatherCondition: DialWeatherCondition;
+  weatherCondition: WeatherCondition;
   tempLabel: string;
   motionLabel: string;
   placeLabel: string;
@@ -38,53 +38,19 @@ export interface DialViewModel {
   key: string;
   moodTags: string[];
   orbColors: [string, string];
+  intensityNormalized: number;
   locationOptions: DialOption[];
   activityOptions: DialOption[];
-  raw: DialDemoSnapshot;
-}
-
-export interface CompositionReadyPackage {
-  version: 'dial-composition-package.v1';
-  snapshotId: string;
-  capturedAt: string;
-  generation: {
-    musicEnabled: boolean;
-    target: 'disabled_prototype' | 'worker_generate';
-  };
-  selected: {
-    hour: number;
-    phase: DialTimePhase;
-    weatherCondition: DialWeatherCondition;
-    location: DialOption;
-    activity: DialOption;
-  };
-  state: {
-    time: DialStateVector['time'];
-    weather?: DialStateVector['weather'];
-    location?: DialStateVector['location'];
-    movement: DialStateVector['movement'];
-    cosmic?: DialStateVector['cosmic'];
-  };
-  music: {
-    bpm: number;
-    key: string;
-    totalDurationMs: number;
-    material: string;
-    force: string;
-    phraseOfTheMoment: string;
-    locationType: DialLocationType;
-    moodTags: string[];
-    energy: DialDemoSnapshot['derived']['stacked']['energy'];
-  };
-  candidates: {
-    locations: DialOption[];
-    activities: DialOption[];
-  };
+  /** Index of the option to align under the wheel pointer (always 0 — the
+   *  highest-scored option for the song). Kept explicit so animation code can
+   *  reason about target rotations without re-deriving. */
+  selectedLocationIndex: 0;
+  selectedActivityIndex: 0;
 }
 
 const MAX_OPTIONS = 8;
 
-const LOCATION_TYPE_LABELS: Partial<Record<DialLocationType, string>> = {
+const LOCATION_TYPE_LABELS: Partial<Record<LocationType, string>> = {
   home_interior: 'HOME',
   home_garden: 'GARDEN',
   office: 'OFFICE',
@@ -138,7 +104,7 @@ const LOCATION_TYPE_LABELS: Partial<Record<DialLocationType, string>> = {
   unknown: 'UNKNOWN',
 };
 
-const WEATHER_LABELS: Record<DialWeatherCondition, string> = {
+const WEATHER_LABELS: Record<WeatherCondition, string> = {
   clear: 'CLEAR',
   mainly_clear: 'MAINLY CLEAR',
   overcast: 'OVERCAST',
@@ -155,116 +121,77 @@ const WEATHER_LABELS: Record<DialWeatherCondition, string> = {
   thunderstorm_hail: 'HAIL STORM',
 };
 
-const BODY_LABELS: Record<DialBodyActivity, string> = {
+const BODY_LABELS: Record<BodyActivity, string> = {
   still: 'STILL',
   walking: 'WALKING',
   running: 'RUNNING',
   vehicle: 'VEHICLE',
 };
 
-export function phaseFromHour(hour: number): DialTimePhase {
-  if (hour >= 5 && hour < 7) return 'dawn';
-  if (hour >= 7 && hour < 11) return 'morning';
-  if (hour >= 11 && hour < 13) return 'noon';
-  if (hour >= 13 && hour < 16) return 'afternoon';
-  if (hour >= 16 && hour < 19) return 'golden_hour';
-  if (hour >= 19 && hour < 21) return 'dusk';
-  if (hour >= 21 || hour < 2) return 'night';
-  return 'witching_hour';
-}
-
-export function buildDialViewModel(snapshot: DialDemoSnapshot, hourOverride?: number): DialViewModel {
-  const hour = hourOverride ?? snapshot.stateVector.time.hour;
-  const phase = phaseFromHour(hour);
-  const weather = snapshot.stateVector.weather;
+/** Build the dial view model from a generated song record. Returns `null` for
+ *  songs that don't carry the server-derived fields (preludes) so the caller
+ *  can render the waiting state. */
+export function buildDialViewModelFromSong(song: PlayedSong): DialViewModel | null {
+  if (!song.stateVector || !song.stacked || !song.renderPlan || !song.locationType) {
+    return null;
+  }
+  const state = song.stateVector;
+  const hour = state.time.hour;
+  const phase = state.time.phase;
+  const weather = state.weather;
   const weatherCondition = weather?.condition ?? 'mainly_clear';
-  const { sunriseHour, sunsetHour } = estimateSunHours(snapshot.stateVector);
-  const isNight = hour < sunriseHour || hour >= sunsetHour;
+  const { sunriseHour, sunsetHour } = estimateSunHours(state);
+  const isNight = weather ? !weather.isDay : hour < sunriseHour || hour >= sunsetHour;
+  const intensityNormalized = state.movement.intensityNormalized;
+  const moodTags = topMoodTags(song.stacked.mood);
 
   return {
-    snapshotId: snapshot.id,
+    songId: song.songId,
     hour,
     phase,
     phaseLabel: displayToken(phase),
-    dayOfWeek: snapshot.stateVector.time.dayOfWeek.toUpperCase(),
+    dayOfWeek: state.time.dayOfWeek.toUpperCase(),
     isNight,
     sunriseHour,
     sunsetHour,
     weatherLabel: WEATHER_LABELS[weatherCondition],
     weatherCondition,
     tempLabel: weather ? `${Math.round(weather.tempC)}C / ${Math.round(weather.humidityPct)}%` : 'NO WEATHER',
-    motionLabel: buildMotionLabel(snapshot.stateVector),
-    placeLabel: buildPlaceLabel(snapshot.stateVector, snapshot.derived.locationType),
-    materialLabel: snapshot.derived.phraseOfTheMoment.material.toUpperCase(),
-    forceLabel: snapshot.derived.phraseOfTheMoment.force.toUpperCase(),
-    bpm: snapshot.derived.renderPlan.bpm,
-    key: snapshot.derived.renderPlan.key,
-    moodTags: snapshot.derived.stacked.moodTags,
-    orbColors: colorsForWeather(weatherCondition, isNight, snapshot.stateVector.movement.intensityNormalized),
-    locationOptions: collectLocationOptions(snapshot),
-    activityOptions: collectActivityOptions(snapshot, phase),
-    raw: snapshot,
+    motionLabel: buildMotionLabel(state, song.bodyActivity ?? 'still'),
+    placeLabel: buildPlaceLabel(state, song.locationType),
+    materialLabel: (song.phraseOfTheMoment?.material ?? '').toUpperCase(),
+    forceLabel: (song.phraseOfTheMoment?.force ?? '').toUpperCase(),
+    bpm: song.renderPlan.bpm,
+    key: song.metadata.key,
+    moodTags,
+    orbColors: colorsForWeather(weatherCondition, isNight, intensityNormalized),
+    intensityNormalized,
+    locationOptions: collectLocationOptions(song, moodTags),
+    activityOptions: collectActivityOptions(song, moodTags),
+    selectedLocationIndex: 0,
+    selectedActivityIndex: 0,
   };
 }
 
-export function buildCompositionReadyPackage(
-  model: DialViewModel,
-  selectedLocation: DialOption,
-  selectedActivity: DialOption,
-  options: { musicEnabled?: boolean } = {},
-): CompositionReadyPackage {
-  const state = model.raw.stateVector;
-  const musicEnabled = options.musicEnabled === true;
-  return {
-    version: 'dial-composition-package.v1',
-    snapshotId: model.snapshotId,
-    capturedAt: state.timestamp,
-    generation: {
-      musicEnabled,
-      target: musicEnabled ? 'worker_generate' : 'disabled_prototype',
-    },
-    selected: {
-      hour: model.hour,
-      phase: model.phase,
-      weatherCondition: model.weatherCondition,
-      location: selectedLocation,
-      activity: selectedActivity,
-    },
-    state: {
-      time: { ...state.time, hour: model.hour, phase: model.phase },
-      ...(state.weather ? { weather: state.weather } : {}),
-      ...(state.location ? { location: state.location } : {}),
-      movement: state.movement,
-      ...(state.cosmic ? { cosmic: state.cosmic } : {}),
-    },
-    music: {
-      bpm: model.raw.derived.renderPlan.bpm,
-      key: model.raw.derived.renderPlan.key,
-      totalDurationMs: model.raw.derived.renderPlan.totalDurationMs,
-      material: model.raw.derived.phraseOfTheMoment.material,
-      force: model.raw.derived.phraseOfTheMoment.force,
-      phraseOfTheMoment: model.raw.derived.phraseOfTheMoment.phrase,
-      locationType: model.raw.derived.locationType,
-      moodTags: model.raw.derived.stacked.moodTags,
-      energy: model.raw.derived.stacked.energy,
-    },
-    candidates: {
-      locations: model.locationOptions,
-      activities: model.activityOptions,
-    },
-  };
+function topMoodTags(mood: Record<string, number>, count = 6, threshold = 0.08): string[] {
+  return Object.entries(mood)
+    .filter(([, value]) => value > threshold)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, count)
+    .map(([tag]) => tag);
 }
 
-function collectLocationOptions(snapshot: DialDemoSnapshot): DialOption[] {
-  const state = snapshot.stateVector;
+function collectLocationOptions(song: PlayedSong, _moodTags: string[]): DialOption[] {
+  const state = song.stateVector!;
+  const locationType = song.locationType!;
   const location = state.location;
   const options: DialOption[] = [];
 
   addOption(options, {
-    id: `location-type:${snapshot.derived.locationType}`,
+    id: `location-type:${locationType}`,
     kind: 'location',
-    label: LOCATION_TYPE_LABELS[snapshot.derived.locationType] ?? displayToken(snapshot.derived.locationType),
-    value: snapshot.derived.locationType,
+    label: LOCATION_TYPE_LABELS[locationType] ?? displayToken(locationType),
+    value: locationType,
     source: 'classified-location-type',
     score: 110,
   });
@@ -316,15 +243,13 @@ function collectLocationOptions(snapshot: DialDemoSnapshot): DialOption[] {
     });
   }
 
-  return options
-    .sort((a, b) => b.score - a.score)
-    .slice(0, MAX_OPTIONS);
+  return options.sort((a, b) => b.score - a.score).slice(0, MAX_OPTIONS);
 }
 
-function collectActivityOptions(snapshot: DialDemoSnapshot, phase: DialTimePhase): DialOption[] {
-  const state = snapshot.stateVector;
+function collectActivityOptions(song: PlayedSong, moodTags: string[]): DialOption[] {
+  const state = song.stateVector!;
   const options: DialOption[] = [];
-  const bodyActivity = state.location?.bodyActivity ?? 'still';
+  const bodyActivity = song.bodyActivity ?? state.location?.bodyActivity ?? 'still';
   const intensity = state.movement.intensityNormalized;
 
   addOption(options, {
@@ -366,15 +291,15 @@ function collectActivityOptions(snapshot: DialDemoSnapshot, phase: DialTimePhase
   }
 
   addOption(options, {
-    id: `phase:${phase}`,
+    id: `phase:${state.time.phase}`,
     kind: 'activity',
-    label: displayToken(phase),
-    value: phase,
+    label: displayToken(state.time.phase),
+    value: state.time.phase,
     source: 'clock-phase',
     score: 76,
   });
 
-  for (const tag of snapshot.derived.stacked.moodTags) {
+  for (const tag of moodTags) {
     addOption(options, {
       id: `mood:${tag}`,
       kind: 'activity',
@@ -385,9 +310,7 @@ function collectActivityOptions(snapshot: DialDemoSnapshot, phase: DialTimePhase
     });
   }
 
-  return options
-    .sort((a, b) => b.score - a.score)
-    .slice(0, MAX_OPTIONS);
+  return options.sort((a, b) => b.score - a.score).slice(0, MAX_OPTIONS);
 }
 
 function addOption(options: DialOption[], option: DialOption): void {
@@ -397,10 +320,7 @@ function addOption(options: DialOption[], option: DialOption): void {
 }
 
 function compactLabel(value: string): string {
-  const cleaned = value
-    .replace(/[_-]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  const cleaned = value.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
   const words = cleaned.split(' ');
   if (words.length > 2) return words.slice(0, 2).join(' ').toUpperCase();
   return cleaned.toUpperCase();
@@ -421,18 +341,17 @@ function intensityBucket(value: number): string {
   return 'PEAK ENERGY';
 }
 
-function buildMotionLabel(state: DialStateVector): string {
-  const body = state.location?.bodyActivity ?? 'still';
+function buildMotionLabel(state: StateVector, body: BodyActivity): string {
   const speed = state.location ? ` ${Math.round(state.location.speedMps * 3.6)}KMH` : '';
   return `${BODY_LABELS[body]} / ${displayToken(state.movement.pattern)}${speed}`;
 }
 
-function buildPlaceLabel(state: DialStateVector, locationType: DialLocationType): string {
+function buildPlaceLabel(state: StateVector, locationType: LocationType): string {
   const primary = state.location?.place?.name ?? state.location?.neighborhood ?? state.location?.city;
   return compactLabel(primary ?? LOCATION_TYPE_LABELS[locationType] ?? locationType);
 }
 
-function estimateSunHours(state: DialStateVector): { sunriseHour: number; sunsetHour: number } {
+function estimateSunHours(state: StateVector): { sunriseHour: number; sunsetHour: number } {
   const weather = state.weather;
   if (!weather) return { sunriseHour: 6, sunsetHour: 18 };
   const baseHour = state.time.hour;
@@ -446,7 +365,7 @@ function normalizeHourFloat(value: number): number {
 }
 
 function colorsForWeather(
-  condition: DialWeatherCondition,
+  condition: WeatherCondition,
   isNight: boolean,
   intensity: number,
 ): [string, string] {

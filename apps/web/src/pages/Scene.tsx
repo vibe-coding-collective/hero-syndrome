@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Visualization } from '../components/Visualization';
-import SourcesFootnotes from '../components/SourcesFootnotes';
+import DiskUiPrototype from '../components/DiskUiPrototype';
 import { startScene, clearActiveRuntime } from '../session/start';
 import { AudioEngine } from '../audio/engine';
 import { endScene } from '../session/end';
 import { IdleWatcher } from '../session/idle';
-import { useStore } from '../state/store';
 
 type Stage = 'permission' | 'starting' | 'live' | 'ending';
 
@@ -15,17 +13,17 @@ export default function Scene() {
   const [stage, setStage] = useState<Stage>('permission');
   const [error, setError] = useState<string | null>(null);
   const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
-  const [sourcesOpen, setSourcesOpen] = useState(false);
+  const stageRef = useRef<Stage>('permission');
   const idleRef = useRef<IdleWatcher | null>(null);
-  const sessionId = useStore((s) => s.sessionId);
-  const songs = useStore((s) => s.songs);
-  const isPlaying = useStore((s) => s.isPlaying);
-  const stateVector = useStore((s) => s.stateVector);
-  const generationLatencyEMA = useStore((s) => s.generationLatencyEMA);
+
+  useEffect(() => {
+    stageRef.current = stage;
+  }, [stage]);
 
   useEffect(() => {
     return () => {
       idleRef.current?.stop();
+      idleRef.current = null;
       clearActiveRuntime();
     };
   }, []);
@@ -43,7 +41,7 @@ export default function Scene() {
       setAnalyser(runtime.engine.analyser);
       setStage('live');
       const watcher = new IdleWatcher(() => {
-        if (stage === 'live') void onEnd();
+        if (stageRef.current === 'live') void onEnd();
       });
       watcher.start();
       idleRef.current = watcher;
@@ -58,13 +56,8 @@ export default function Scene() {
     setStage('ending');
     idleRef.current?.stop();
     idleRef.current = null;
-    const res = await endScene();
-    if (res) {
-      navigate(`/episode/${res.episodeId}`);
-    } else {
-      setError('Could not finalize the scene. Please try again.');
-      setStage('live');
-    }
+    await endScene();
+    navigate('/');
   };
 
   if (stage === 'permission') {
@@ -80,65 +73,17 @@ export default function Scene() {
   }
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-paper text-ink">
-      <header className="absolute inset-x-0 top-0 z-30 flex items-center justify-between px-5 pt-[max(1rem,env(safe-area-inset-top))]">
-        <div className="font-mono text-[10px] small-caps text-ink/65">
-          {sessionId ? `Scene · ${sessionId.slice(-6)}` : 'Scene'}
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setSourcesOpen(true)}
-            className="rounded-full border border-ink/30 bg-paper/70 px-3 py-1.5 font-mono text-[10px] small-caps text-ink/65 backdrop-blur transition hover:bg-paper"
-            aria-label="Open sources"
-          >
-            Sources
-          </button>
-          <button
-            type="button"
-            onClick={onEnd}
-            disabled={stage === 'ending'}
-            className="rounded-full border border-ink/30 bg-paper/70 px-4 py-1.5 font-mono text-[11px] small-caps text-ink/85 backdrop-blur transition hover:bg-paper disabled:opacity-50"
-          >
-            {stage === 'ending' ? 'closing…' : 'End scene'}
-          </button>
-        </div>
-      </header>
-
-      <main className="absolute inset-0">
-        <Visualization analyser={analyser} />
-      </main>
-
-      <SceneStatus
-        isPlaying={isPlaying}
-        songsCount={songs.length}
-        latencyMs={generationLatencyEMA}
-        place={stateVector?.location?.place?.type ?? null}
-        condition={stateVector?.weather?.condition ?? null}
-        phase={stateVector?.time?.phase ?? null}
-        intensity={stateVector?.movement?.intensityNormalized ?? null}
-      />
-
-      {sourcesOpen ? (
-        <div
-          className="fixed inset-0 z-50 overflow-y-auto bg-paper/95 backdrop-blur"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="mx-auto max-w-3xl px-6 py-12">
-            <div className="flex items-center justify-end mb-6">
-              <button
-                type="button"
-                onClick={() => setSourcesOpen(false)}
-                className="rounded-full border border-ink/30 bg-paper px-4 py-1.5 font-mono text-[11px] small-caps text-ink/85 transition hover:bg-paper-deep/40"
-              >
-                Close
-              </button>
-            </div>
-            <SourcesFootnotes variant="compact" />
-          </div>
-        </div>
-      ) : null}
+    <div className="phone-dial-stage">
+      <DiskUiPrototype analyser={analyser} />
+      <button
+        type="button"
+        onClick={onEnd}
+        disabled={stage === 'ending'}
+        className="phone-dial-end-pill"
+        aria-label="End scene"
+      >
+        {stage === 'ending' ? 'closing…' : 'End scene'}
+      </button>
     </div>
   );
 }
@@ -169,29 +114,6 @@ function PermissionGate({ onBegin, error }: { onBegin: () => void; error: string
           <p className="mt-6 font-mono text-[11px] small-caps text-rust">{error}</p>
         ) : null}
       </div>
-    </div>
-  );
-}
-
-function SceneStatus(props: {
-  isPlaying: boolean;
-  songsCount: number;
-  latencyMs: number;
-  place: string | null;
-  condition: string | null;
-  phase: string | null;
-  intensity: number | null;
-}) {
-  return (
-    <div className="absolute inset-x-0 bottom-[calc(7.5rem+env(safe-area-inset-bottom))] z-20 px-5 text-center">
-      <p className="font-mono text-[10px] small-caps text-ink/65">
-        {props.isPlaying ? `song ${props.songsCount} · gen ema ${Math.round(props.latencyMs / 1000)}s` : 'preparing the score…'}
-      </p>
-      <p className="mt-1 font-serif text-[15px] italic text-ink/80">
-        {[props.phase, props.place, props.condition, props.intensity != null ? `intensity ${props.intensity.toFixed(2)}` : null]
-          .filter(Boolean)
-          .join(' · ') || ' '}
-      </p>
     </div>
   );
 }
