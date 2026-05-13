@@ -1,7 +1,16 @@
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { AudioEngine, stashUnlockedContext } from '../audio/engine'
 import SignalTrace from './SignalTrace'
 
 export default function SendOne() {
+  const navigate = useNavigate()
+
+  const onBegin = (): void => {
+    const ctx = AudioEngine.unlockedContext()
+    stashUnlockedContext(ctx)
+    navigate('/scene')
+  }
+
   return (
     <section className="border-b border-ink/15 bg-paper-deep/40">
       <div className="mx-auto max-w-7xl px-6 md:px-12 py-20 md:py-28">
@@ -19,8 +28,9 @@ export default function SendOne() {
               it sit in someone else&rsquo;s archive, unread, like a postcard
               that took the long way home.
             </p>
-            <Link
-              to="/scene"
+            <button
+              type="button"
+              onClick={onBegin}
               className="group mt-10 inline-flex items-baseline gap-3 px-7 py-4 border border-ink text-ink font-serif text-[18px] md:text-[20px] hover:bg-ink hover:text-paper transition-colors duration-300"
             >
               Begin a scene
@@ -30,7 +40,7 @@ export default function SendOne() {
               >
                 →
               </span>
-            </Link>
+            </button>
           </div>
 
           <div className="lg:col-span-7">

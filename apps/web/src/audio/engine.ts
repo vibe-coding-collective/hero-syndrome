@@ -307,3 +307,24 @@ export class AudioEngine {
     return Math.max(0, this.current.startedAt + this.current.buffer.duration - this.ctx.currentTime);
   }
 }
+
+/** Module-level handoff slot. Landing CTAs unlock an AudioContext
+ *  synchronously inside the click handler (iOS requirement) and stash it
+ *  here, then navigate to /scene. Scene consumes the stash on mount and
+ *  skips the permission gate, keeping the unlock from the original user
+ *  gesture intact. */
+let pendingUnlockedContext: AudioContext | null = null;
+
+export function stashUnlockedContext(ctx: AudioContext): void {
+  pendingUnlockedContext = ctx;
+}
+
+export function consumeUnlockedContext(): AudioContext | null {
+  const ctx = pendingUnlockedContext;
+  pendingUnlockedContext = null;
+  return ctx;
+}
+
+export function peekUnlockedContext(): AudioContext | null {
+  return pendingUnlockedContext;
+}

@@ -1,6 +1,18 @@
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { AudioEngine } from '../audio/engine'
+import { stashUnlockedContext } from '../audio/engine'
 
 export default function Hero() {
+  const navigate = useNavigate()
+
+  const onBegin = (): void => {
+    // Unlock AudioContext synchronously inside the click handler so iOS
+    // Safari grants permission. Stash for Scene to consume on mount.
+    const ctx = AudioEngine.unlockedContext()
+    stashUnlockedContext(ctx)
+    navigate('/scene')
+  }
+
   return (
     <section className="border-b border-ink/15">
       <div className="mx-auto max-w-7xl px-6 md:px-12 pt-20 md:pt-32 pb-20 md:pb-28">
@@ -22,8 +34,9 @@ export default function Hero() {
         </div>
 
         <div className="mt-12 md:mt-16 flex flex-wrap items-baseline gap-x-8 gap-y-4">
-          <Link
-            to="/scene"
+          <button
+            type="button"
+            onClick={onBegin}
             className="group inline-flex items-baseline gap-3 px-7 py-4 border border-rust text-rust font-serif text-[20px] md:text-[22px] hover:bg-rust hover:text-paper transition-colors duration-300"
           >
             Begin scene
@@ -33,7 +46,7 @@ export default function Hero() {
             >
               →
             </span>
-          </Link>
+          </button>
           <a
             href="#archive"
             className="font-mono text-[11px] small-caps text-ink/65 hover:text-ink underline-offset-4 decoration-ink/30 hover:decoration-ink"
