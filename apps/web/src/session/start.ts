@@ -106,11 +106,13 @@ export async function startScene(audioCtx?: AudioContext): Promise<SceneRuntime>
   // + motion (no weather, no place, no classification). Waiting for
   // `firstLocationTick` lets weather + reverse-geocode + nearby actually
   // populate before /generate, so song 1's dial readouts match the user's
-  // location instead of falling back to coords/phase. Cap the wait at 15s
+  // location instead of falling back to coords/phase. Cap the wait at 25s
   // so a slow or denied GPS doesn't block the session indefinitely.
+  // (15s wasn't enough on iOS Chrome's first start; the prelude carries
+  // audio during this wait so the user isn't sitting in silence.)
   Promise.race([
     aggregator.firstLocationTick,
-    new Promise<void>((resolve) => window.setTimeout(resolve, 15_000)),
+    new Promise<void>((resolve) => window.setTimeout(resolve, 25_000)),
   ]).then(() => synthesizer.generateNext().catch(() => undefined));
 
   // The cosmic block is fetched in parallel; it's session-frozen so the
