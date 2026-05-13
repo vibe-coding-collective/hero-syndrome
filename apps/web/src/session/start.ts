@@ -100,14 +100,17 @@ export async function startScene(audioCtx?: AudioContext): Promise<SceneRuntime>
     },
   });
 
-  // Wait for the aggregator's first complete tick (geocode + weather +
-  // nearby resolved against the latest GPS reading), then fire /generate
-  // for song 1. This avoids song 1 going out with only time + motion while
-  // the rest of the sensors are still warming up. Cap the wait so a slow
-  // upstream doesn't block the session forever.
+  // Wait for the aggregator's first tick that includes a geolocation fix —
+  // not just any tick. `firstTick` can resolve before the geolocation sensor
+  // returns its first reading, in which case song 1 goes out with only time
+  // + motion (no weather, no place, no classification). Waiting for
+  // `firstLocationTick` lets weather + reverse-geocode + nearby actually
+  // populate before /generate, so song 1's dial readouts match the user's
+  // location instead of falling back to coords/phase. Cap the wait at 15s
+  // so a slow or denied GPS doesn't block the session indefinitely.
   Promise.race([
-    aggregator.firstTick,
-    new Promise<void>((resolve) => window.setTimeout(resolve, 8000)),
+    aggregator.firstLocationTick,
+    new Promise<void>((resolve) => window.setTimeout(resolve, 15_000)),
   ]).then(() => synthesizer.generateNext().catch(() => undefined));
 
   // The cosmic block is fetched in parallel; it's session-frozen so the

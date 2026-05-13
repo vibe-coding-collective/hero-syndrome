@@ -22,7 +22,11 @@ export function metaToPlan(
   options?: PipelineOptions,
 ): MetaToPlanResult {
   const seed = options?.seed ?? 'default-seed';
-  const totalDurationMs = options?.totalDurationMs ?? 60_000;
+  // 75s per song gives the audio engine's 5s crossfade ramp ~70s of full-
+  // volume listening before the next song fades in. Shorter requests
+  // (e.g. 60s) sometimes returned ~55s of audio from ElevenLabs and the
+  // crossfade started painfully early (~50s).
+  const totalDurationMs = options?.totalDurationMs ?? 75_000;
 
   const stackOpts: Parameters<typeof stackMeta>[1] = {};
   if (options?.undertowSmooth) stackOpts.undertowSmooth = options.undertowSmooth;

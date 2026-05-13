@@ -15,7 +15,15 @@ export class StateAggregator {
   private timer: number | null = null;
   private running = false;
   private firstTickResolve: (() => void) | null = null;
+  private firstLocationTickResolve: (() => void) | null = null;
   readonly firstTick: Promise<void>;
+  /** Resolves on the first tick that has a real `location` field (i.e. the
+   *  geolocation sensor has produced at least one fix). Used by `startScene`
+   *  to delay the very first /generate until weather + reverse-geocode have
+   *  a chance to land; otherwise song 1 frequently goes out with no place
+   *  or weather and the dial ends up with sparse readouts for the rest of
+   *  the session. */
+  readonly firstLocationTick: Promise<void>;
 
   constructor(motion: MotionSensor, geo: GeolocationSensor) {
     this.motion = motion;
@@ -23,6 +31,9 @@ export class StateAggregator {
     this.geo.subscribe((r) => this.motion.setGpsSpeed(r.speedMps));
     this.firstTick = new Promise<void>((resolve) => {
       this.firstTickResolve = resolve;
+    });
+    this.firstLocationTick = new Promise<void>((resolve) => {
+      this.firstLocationTickResolve = resolve;
     });
   }
 
@@ -89,6 +100,10 @@ export class StateAggregator {
     if (this.firstTickResolve) {
       this.firstTickResolve();
       this.firstTickResolve = null;
+    }
+    if (sv.location && this.firstLocationTickResolve) {
+      this.firstLocationTickResolve();
+      this.firstLocationTickResolve = null;
     }
   }
 }
