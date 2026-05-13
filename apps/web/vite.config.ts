@@ -25,6 +25,12 @@ export default defineConfig({
       workbox: {
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api/, /^\/episode\//, /^\/song\//, /^\/preludes\//],
+        // New SW takes over immediately and claims all open clients so an
+        // older cached bundle can't keep serving stale assets for the lifetime
+        // of a tab. Combined with `registerType: 'autoUpdate'`, the worst-case
+        // stale window is one page load.
+        skipWaiting: true,
+        clientsClaim: true,
         runtimeCaching: [
           {
             urlPattern: ({ url }) => /\/preludes\/manifest\.json$/.test(url.pathname),

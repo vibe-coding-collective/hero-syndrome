@@ -372,26 +372,34 @@
     text-anchor: middle;
   }
 
-  .phone-dial__center-orb,
-  .phone-dial__center-orb-object {
-    overflow: hidden;
+  /* Orb is an HTML layer positioned via percentages relative to the dial
+     container (which preserves a 393:852 aspect ratio). The center maps to the
+     SVG viewBox point (197, 426) = (50.127%, 50%). Width 111/393 = 28.244%.
+     Aspect-ratio: 1/1 keeps it square. Rendering outside the SVG avoids the
+     iOS Safari foreignObject offset that pushed the orb off-center on phones. */
+  .phone-dial__orb-layer {
+    position: absolute;
+    top: 50%;
+    left: 50.127%;
+    transform: translate(-50%, -50%);
+    width: 28.244%;
+    aspect-ratio: 1 / 1;
     pointer-events: none;
+    /* Sit above the dial SVG so the orb is on top of the inner-core image but
+       under the SelectionOverlay (z-index 20 in the overlay rule above). */
+    z-index: 5;
   }
 
-  .phone-dial__center-orb-object {
-    clip-path: circle(55px at 55.5px 55.5px);
-  }
-
-  .phone-dial__center-orb-shell {
-    width: 111px;
-    height: 111px;
+  .phone-dial__orb-shell {
+    width: 100%;
+    height: 100%;
     overflow: hidden;
-    border-radius: 999px;
-    clip-path: circle(55px at 55.5px 55.5px);
+    border-radius: 50%;
+    clip-path: circle(50% at 50% 50%);
     contain: paint;
     isolation: isolate;
     background:
-      radial-gradient(circle at 42% 36%, rgba(255, 255, 255, 0.48), transparent 28%),
+      radial-gradient(circle at 50% 38%, rgba(255, 255, 255, 0.42), transparent 38%),
       radial-gradient(circle, rgba(205, 226, 247, 0.95), rgba(107, 137, 172, 0.86) 64%, rgba(46, 54, 75, 0.74));
     box-shadow:
       inset 0 0 0 1px rgba(255, 255, 255, 0.5),
@@ -405,14 +413,14 @@
     height: 100%;
     overflow: hidden;
     border-radius: inherit;
-    clip-path: circle(55px at 55.5px 55.5px);
+    clip-path: circle(50% at 50% 50%);
   }
 
   .phone-dial__orb-canvas canvas {
     display: block;
     width: 100% !important;
     height: 100% !important;
-    clip-path: circle(55px at 55.5px 55.5px);
+    clip-path: circle(50% at 50% 50%);
   }
 
   .phone-dial__orb-bezel-fill {
@@ -447,10 +455,10 @@
     fill: rgba(238, 239, 255, 0.82);
   }
 
-  /* Selection overlay: appears at every song boundary, fades in, the wheel
-     spins from -360° to 0° landing on the new song's top-scored option, then
-     fades out. Total window: OVERLAY_DURATION_MS (1800ms) — keep keyframe
-     timing in sync with that constant in DiskUiPrototype.tsx. */
+  /* Selection overlay: fires at T=57.5s of the current song (2.5s before the
+     boundary) so the wheel + fade-out finish exactly at T=60s when the next
+     song is fully audible. Total window: OVERLAY_DURATION_MS (2500ms) — keep
+     keyframe timing in sync with that constant in DiskUiPrototype.tsx. */
   .phone-dial__location-overlay {
     position: absolute;
     inset: 0;
@@ -460,8 +468,8 @@
       rgba(92, 66, 140, 0.18);
     backdrop-filter: blur(14px) saturate(0.88);
     animation:
-      phone-dial-selection-in 360ms cubic-bezier(0.18, 0.82, 0.22, 1) both,
-      phone-dial-selection-out 320ms cubic-bezier(0.4, 0, 0.2, 1) 1480ms both;
+      phone-dial-selection-in 420ms cubic-bezier(0.18, 0.82, 0.22, 1) both,
+      phone-dial-selection-out 420ms cubic-bezier(0.4, 0, 0.2, 1) 2080ms both;
     pointer-events: none;
   }
 
@@ -475,7 +483,7 @@
   .phone-dial__location-list {
     transform-box: view-box;
     transform-origin: 197px 426px;
-    animation: phone-dial-wheel-spin 1.6s cubic-bezier(0.2, 0.6, 0.2, 1) both;
+    animation: phone-dial-wheel-spin 2.2s cubic-bezier(0.2, 0.6, 0.2, 1) both;
   }
 
   .phone-dial__location-list text {

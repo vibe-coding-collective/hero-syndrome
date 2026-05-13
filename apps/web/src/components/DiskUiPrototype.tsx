@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import {
   buildDialViewModelFromSong,
@@ -23,7 +23,6 @@ const ASSETS = {
 const FRAME = { width: 393, height: 852 };
 const DIAL_CENTER = { x: 197, y: 426 };
 const CENTER_ORB_SIZE = 111;
-const CENTER_ORB_CLIP_RADIUS = CENTER_ORB_SIZE / 2 - 0.5;
 const ORB_BEZEL_INNER_RADIUS = CENTER_ORB_SIZE / 2 - 1.5;
 const ORB_BEZEL_OUTER_RADIUS = 80.5;
 const SUN_ORBIT_RADIUS = 147;
@@ -38,7 +37,13 @@ const BUTTON_TEXT_RADIUS = 84;
 const BUTTON_ARC_SPAN = 92;
 const SELECTION_CONTROL_RING_SIZE = 213;
 const SELECTION_POINTER = { width: 85.336, height: 111.5 };
-const OVERLAY_DURATION_MS = 1800;
+/** Total window the song-boundary overlay is mounted for, in ms. The CSS
+ *  animations in `phone-dial__location-overlay` and `phone-dial__location-list`
+ *  must sum to this duration. The wheel transition fires at
+ *  TRANSITION_LEAD_MS before the current song ends so it completes exactly at
+ *  the song boundary (audio crossfade is 5s wide; visuals run the back half). */
+const OVERLAY_DURATION_MS = 2500;
+const TRANSITION_LEAD_MS = 2500;
 
 type MusicProgressMode = 'idle' | 'loading' | 'playback';
 
@@ -195,47 +200,38 @@ function MusicProgressRing(props: {
   );
 }
 
+/** Center orb rendered as an absolutely-positioned HTML div on top of the dial
+ *  SVG. Lives outside the SVG (and not in a `<foreignObject>`) because iOS
+ *  Safari can offset foreignObject contents from the SVG viewBox when the SVG
+ *  is CSS-scaled — the orb visibly drifts off-center on a phone even though
+ *  the SVG geometry says it's at DIAL_CENTER. CSS percentages relative to the
+ *  393×852 viewBox keep it locked to the dial's visual center on every
+ *  browser. */
 function CenterOrb(props: {
   colors: [string, string];
   isMusicPlaying: boolean;
   musicLevel: number;
   seed: number;
 }) {
-  const rawClipId = useId();
-  const clipId = `center-orb-clip-${rawClipId.replace(/:/g, '')}`;
   const orbState = props.isMusicPlaying ? 'talking' : null;
   const orbKey = `${orbState ?? 'idle'}-${props.colors[0]}-${props.colors[1]}-${props.seed}`;
   const levelRef = useRef(props.musicLevel);
   levelRef.current = props.musicLevel;
 
   return (
-    <g className="phone-dial__center-orb">
-      <defs>
-        <clipPath clipPathUnits="userSpaceOnUse" id={clipId}>
-          <circle cx={DIAL_CENTER.x} cy={DIAL_CENTER.y} r={CENTER_ORB_CLIP_RADIUS} />
-        </clipPath>
-      </defs>
-      <foreignObject
-        className="phone-dial__center-orb-object"
-        clipPath={`url(#${clipId})`}
-        height={CENTER_ORB_SIZE}
-        width={CENTER_ORB_SIZE}
-        x={DIAL_CENTER.x - CENTER_ORB_SIZE / 2}
-        y={DIAL_CENTER.y - CENTER_ORB_SIZE / 2}
-      >
-        <div className="phone-dial__center-orb-shell">
-          <Orb
-            agentState={orbState}
-            className="phone-dial__orb-canvas"
-            colors={props.colors}
-            getOutputVolume={() => levelRef.current}
-            key={orbKey}
-            seed={props.seed}
-            volumeMode="manual"
-          />
-        </div>
-      </foreignObject>
-    </g>
+    <div className="phone-dial__orb-layer" aria-hidden>
+      <div className="phone-dial__orb-shell">
+        <Orb
+          agentState={orbState}
+          className="phone-dial__orb-canvas"
+          colors={props.colors}
+          getOutputVolume={() => levelRef.current}
+          key={orbKey}
+          seed={props.seed}
+          volumeMode="manual"
+        />
+      </div>
+    </div>
   );
 }
 
@@ -429,9 +425,25 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
     () => (currentSongId ? songs.find((song) => song.songId === currentSongId) ?? null : null),
     [currentSongId, songs],
   );
+
+  /** Song whose data the dial *visualizes*. Leads the audio engine by
+   *  TRANSITION_LEAD_MS so the dial body crossfades in lockstep with the audio
+   *  fade-in's second half. Until that lead-in, equals the currently playing
+   *  song. After it, equals the next song already in the queue. */
+  const displayedSong = useMemo(() => {
+    if (!currentSong) return null;
+    const currentIdx = songs.findIndex((song) => song.songId === currentSong.songId);
+    const nextSong = songs.slice(currentIdx + 1).find((song) => song.stacked && song.renderPlan);
+    if (!nextSong) return currentSong;
+    if (currentSong.startedAt == null) return currentSong;
+    const timeIntoSong = progressClock - currentSong.startedAt;
+    const triggerAt = currentSong.durationSec * 1000 - TRANSITION_LEAD_MS;
+    return timeIntoSong < triggerAt ? currentSong : nextSong;
+  }, [currentSong, songs, progressClock]);
+
   const model = useMemo(
-    () => (currentSong ? buildDialViewModelFromSong(currentSong) : null),
-    [currentSong],
+    () => (displayedSong ? buildDialViewModelFromSong(displayedSong) : null),
+    [displayedSong],
   );
   const modelSongId = model?.songId ?? null;
 
@@ -615,12 +627,6 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
           x={DIAL_CENTER.x - 41.5}
           y={DIAL_CENTER.y - 41.5}
         />
-        <CenterOrb
-          colors={model.orbColors}
-          isMusicPlaying={isPlaying}
-          musicLevel={musicOrbLevel}
-          seed={model.bpm + (model.locationOptions[0]?.label.length ?? 0)}
-        />
         <OrbBezel />
 
         <g
@@ -674,6 +680,12 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
           <text x="25" y="746">{model.placeLabel} / {model.bpm} BPM / {model.key}</text>
         </g>
       </svg>
+      <CenterOrb
+        colors={model.orbColors}
+        isMusicPlaying={isPlaying}
+        musicLevel={musicOrbLevel}
+        seed={model.bpm + (model.locationOptions[0]?.label.length ?? 0)}
+      />
       {overlayActive ? <SelectionOverlay model={model} /> : null}
     </section>
   );
