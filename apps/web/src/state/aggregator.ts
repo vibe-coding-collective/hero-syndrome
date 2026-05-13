@@ -59,6 +59,7 @@ export class StateAggregator {
       sv.location = {
         speedMps: geo.speedMps,
         bodyActivity: motionReading.bodyActivity,
+        coords: { lat: geo.lat, lon: geo.lon },
       };
 
       try {

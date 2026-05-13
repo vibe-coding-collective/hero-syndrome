@@ -127,6 +127,14 @@ export interface StateVector {
   location?: {
     speedMps: number;
     bodyActivity: BodyActivity;
+    /** Raw lat/lon from the geolocation sensor. Surfaced on the StateVector
+     *  (and via /generate back to the client) so the dial can compute sun
+     *  position locally — astronomical sunrise/sunset, elevation, and the
+     *  adaptive lightLevel — without round-tripping through the weather API. */
+    coords?: {
+      lat: number;
+      lon: number;
+    };
     /** Raw reverse-geocode fields fed into the Claude location-classification
      *  step. The classified `locationType` lives on the song record, not here. */
     place?: {

@@ -6,6 +6,11 @@ import type {
   WeatherCondition,
 } from '@hero-syndrome/shared';
 import type { PlayedSong } from '../state/store';
+import {
+  computeLightLevel,
+  dateToCivicHour,
+  sunTimesFor,
+} from './solarPosition';
 
 export type DialOptionKind = 'location' | 'activity';
 
@@ -32,6 +37,10 @@ export interface DialViewModel {
   tempLabel: string;
   motionLabel: string;
   placeLabel: string;
+  /** Fallback for the top arc button when there's no location data — the
+   *  user's coords rounded to one decimal, e.g. "22.3°N 114.2°E". Empty
+   *  string if coords are unavailable. */
+  coordsLabel: string;
   materialLabel: string;
   forceLabel: string;
   bpm: number;
@@ -39,6 +48,11 @@ export interface DialViewModel {
   moodTags: string[];
   orbColors: [string, string];
   intensityNormalized: number;
+  /** Adaptive lighting (0..1): smooth function of sun altitude at the
+   *  user's coords, attenuated by cloud cover. Falls back to a neutral
+   *  midday value when coords aren't available. Drives the dial's overall
+   *  brightness via a CSS variable. */
+  lightLevel: number;
   locationOptions: DialOption[];
   activityOptions: DialOption[];
   /** Index of the option to align under the wheel pointer (always 0 — the
@@ -140,10 +154,32 @@ export function buildDialViewModelFromSong(song: PlayedSong): DialViewModel | nu
   const phase = state.time.phase;
   const weather = state.weather;
   const weatherCondition = weather?.condition ?? 'mainly_clear';
-  const { sunriseHour, sunsetHour } = estimateSunHours(state);
+  const coords = state.location?.coords;
+  const songDate = new Date(state.timestamp);
+  // Prefer astronomical sunrise/sunset from the user's coords + date over
+  // the weather provider's proximity values (which use UTC days and can be
+  // off by one across the dateline). Fall back to proximity if coords are
+  // missing, then to a neutral 06/18.
+  const sun = coords ? sunTimesFor(songDate, coords.lat, coords.lon) : null;
+  const sunriseHour = sun
+    ? dateToCivicHour(sun.sunrise)
+    : weather
+      ? estimateSunHourFromProximity(hour, weather.sunriseProximityMin)
+      : 6;
+  const sunsetHour = sun
+    ? dateToCivicHour(sun.sunset)
+    : weather
+      ? estimateSunHourFromProximity(hour, weather.sunsetProximityMin)
+      : 18;
   const isNight = weather ? !weather.isDay : hour < sunriseHour || hour >= sunsetHour;
   const intensityNormalized = state.movement.intensityNormalized;
   const moodTags = topMoodTags(song.stacked.mood);
+  const lightLevel = computeLightLevel({
+    date: songDate,
+    lat: coords?.lat,
+    lon: coords?.lon,
+    cloudCoverPct: weather?.cloudCoverPct,
+  });
 
   return {
     songId: song.songId,
@@ -163,6 +199,7 @@ export function buildDialViewModelFromSong(song: PlayedSong): DialViewModel | nu
     tempLabel: weather ? `${Math.round(weather.tempC)}C / ${Math.round(weather.humidityPct)}%` : '',
     motionLabel: buildMotionLabel(state, song.bodyActivity ?? 'still'),
     placeLabel: buildPlaceLabel(state, song.locationType),
+    coordsLabel: coords ? formatCoords(coords.lat, coords.lon) : '',
     materialLabel: (song.phraseOfTheMoment?.material ?? '').toUpperCase(),
     forceLabel: (song.phraseOfTheMoment?.force ?? '').toUpperCase(),
     bpm: song.renderPlan.bpm,
@@ -170,11 +207,22 @@ export function buildDialViewModelFromSong(song: PlayedSong): DialViewModel | nu
     moodTags,
     orbColors: colorsForWeather(weatherCondition, isNight, intensityNormalized),
     intensityNormalized,
+    lightLevel,
     locationOptions: collectLocationOptions(song, moodTags),
     activityOptions: collectActivityOptions(song, moodTags),
     selectedLocationIndex: 0,
     selectedActivityIndex: 0,
   };
+}
+
+function estimateSunHourFromProximity(currentHour: number, proximityMin: number): number {
+  return normalizeHourFloat(currentHour - proximityMin / 60);
+}
+
+function formatCoords(lat: number, lon: number): string {
+  const ns = lat >= 0 ? 'N' : 'S';
+  const ew = lon >= 0 ? 'E' : 'W';
+  return `${Math.abs(lat).toFixed(1)}°${ns} ${Math.abs(lon).toFixed(1)}°${ew}`;
 }
 
 function topMoodTags(mood: Record<string, number>, count = 6, threshold = 0.08): string[] {
@@ -359,15 +407,6 @@ function buildPlaceLabel(state: StateVector, locationType: LocationType): string
   if (primary) return compactLabel(primary);
   if (locationType === 'unknown') return '';
   return LOCATION_TYPE_LABELS[locationType] ?? '';
-}
-
-function estimateSunHours(state: StateVector): { sunriseHour: number; sunsetHour: number } {
-  const weather = state.weather;
-  if (!weather) return { sunriseHour: 6, sunsetHour: 18 };
-  const baseHour = state.time.hour;
-  const sunriseHour = normalizeHourFloat(baseHour - weather.sunriseProximityMin / 60);
-  const sunsetHour = normalizeHourFloat(baseHour - weather.sunsetProximityMin / 60);
-  return { sunriseHour, sunsetHour };
 }
 
 function normalizeHourFloat(value: number): number {

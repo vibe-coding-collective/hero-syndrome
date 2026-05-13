@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import {
@@ -311,10 +312,19 @@ function SunIndicator(props: { x: number; y: number }) {
  *  revolution back to 0 via CSS keyframes, landing on the song's top-scored
  *  option (always at index 0 in the option list). */
 function SelectionOverlay({ model }: { model: DialViewModel }) {
-  const options = model.locationOptions;
-  const step = options.length > 0 ? 360 / options.length : 0;
-  const selected = options[0];
-  if (!selected) return null;
+  // Build the wheel from location options, falling back to activity options,
+  // then to a single coords/phase placeholder so the overlay always renders
+  // something — never null. (When location data is missing for the whole
+  // session, the overlay used to disappear entirely; the wheel needs at
+  // least one item to spin around.)
+  const fallbackLabel = model.coordsLabel || model.phaseLabel;
+  const wheelOptions = model.locationOptions.length > 0
+    ? model.locationOptions
+    : model.activityOptions.length > 0
+      ? model.activityOptions
+      : [{ id: 'fallback', kind: 'location' as const, label: fallbackLabel, value: fallbackLabel, score: 0, source: 'fallback' }];
+  const step = wheelOptions.length > 0 ? 360 / wheelOptions.length : 0;
+  const selected = wheelOptions[0]!;
   const selectedArcId = `location-selected-arc`;
 
   return (
@@ -348,7 +358,7 @@ function SelectionOverlay({ model }: { model: DialViewModel }) {
         />
 
         <g className="phone-dial__location-list">
-          {options.map((option, index) => {
+          {wheelOptions.map((option, index) => {
             const angle = index * step;
             const pathId = `location-option-${index}`;
             const separatorPathId = `${pathId}-separator`;
@@ -419,7 +429,6 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
   const [progressClock, setProgressClock] = useState(() => performance.now());
   const [musicOrbLevel, setMusicOrbLevel] = useState(0);
   const [overlayActive, setOverlayActive] = useState(false);
-  const lastShownSongIdRef = useRef<string | null>(null);
 
   const currentSong = useMemo(
     () => (currentSongId ? songs.find((song) => song.songId === currentSongId) ?? null : null),
@@ -480,10 +489,9 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
 
   useEffect(() => {
     if (!modelSongId) return;
-    if (lastShownSongIdRef.current === modelSongId) return;
-    const isFirstReveal = lastShownSongIdRef.current === null;
-    lastShownSongIdRef.current = modelSongId;
-    if (isFirstReveal) return;
+    // Fire the overlay on every model song change, including the first
+    // reveal. React's effect identity is keyed on [modelSongId] so this only
+    // runs when the song actually changes, not on every render.
     setOverlayActive(true);
     const hideTimer = window.setTimeout(() => setOverlayActive(false), OVERLAY_DURATION_MS);
     return () => window.clearTimeout(hideTimer);
@@ -505,14 +513,15 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
   const sunPoint = pointOnOrbit(hourAngle, SUN_ORBIT_RADIUS);
   const sunrisePoint = pointOnOrbit(hourToAngle(model.sunriseHour), SUN_ORBIT_RADIUS);
   const sunsetPoint = pointOnOrbit(hourToAngle(model.sunsetHour), SUN_ORBIT_RADIUS);
-  // Fall back to the time phase when there's no location signal — better
-  // than an empty arc button when geolocation was denied.
-  const topButtonLabel = model.locationOptions[0]?.label ?? model.phaseLabel;
+  // Fall back to the user's coordinates when classification + reverse-geocode
+  // came up empty. Coordinates are truthful and non-redundant with the time
+  // phase shown near the sun indicator.
+  const topButtonLabel = model.locationOptions[0]?.label || model.coordsLabel;
   const bottomButtonLabel = model.activityOptions[0]?.label ?? '';
   // Top readout line: weather + temp, or phase + day-of-week as fallback.
   const topReadout = [model.weatherLabel, model.tempLabel].filter(Boolean).join(' / ')
     || [model.phaseLabel, model.dayOfWeek].filter(Boolean).join(' / ');
-  const bottomReadout = [model.placeLabel, `${model.bpm} BPM`, model.key].filter(Boolean).join(' / ');
+  const bottomReadout = [model.placeLabel || model.coordsLabel, `${model.bpm} BPM`, model.key].filter(Boolean).join(' / ');
 
   return (
     <section
@@ -521,6 +530,7 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
       data-orb-colors={model.orbColors.join(',')}
       data-progress-mode={musicProgressMode}
       data-overlay={overlayActive ? 'active' : 'idle'}
+      style={{ '--light-level': model.lightLevel.toFixed(3) } as CSSProperties}
     >
       <svg
         aria-label={`Dial state: ${model.phaseLabel}, ${formatHour(model.hour)}`}
