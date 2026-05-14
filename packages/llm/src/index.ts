@@ -4,6 +4,8 @@ export {
   rateEvocativenessBatch,
   classifyLocation,
   AnthropicError,
+  COMPOSE_SYSTEM_PROMPT,
+  LOCATION_CLASSIFY_SYSTEM_PROMPT,
 } from './anthropic';
 export type {
   ComposeSongInput,

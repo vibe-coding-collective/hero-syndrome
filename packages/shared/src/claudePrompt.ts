@@ -65,9 +65,10 @@ export interface ClaudePromptJson {
   };
   /** Compact subset of lexicon phrases relevant to this song's stacked meta. */
   lexicon: LexiconContextDict;
-  vibes: {
-    phraseOfTheMoment?: string;
-  };
+  /** Optional two-word phrase distilled from space weather. Used as flavor
+   *  for the composition prose, never as a directive. Omitted when no
+   *  cosmic data has landed yet for this session. */
+  vibes?: string;
   recentHistory: Array<{
     songId: string;
     metadata: SongMetadata;

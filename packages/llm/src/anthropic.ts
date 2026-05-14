@@ -9,39 +9,24 @@ const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-haiku-4-5';
 const ANTHROPIC_VERSION = '2023-06-01';
 
-const COMPOSE_SYSTEM_PROMPT = `You are composing a film score for this person's life, one song at a time, by calling the \`compose_song\` tool exactly once per turn.
+export const COMPOSE_SYSTEM_PROMPT = `You are composing a soundtrack for this person's life, one song at a time, by calling the \`compose_song\` tool exactly once per turn.
 
-The user message is a JSON object describing the world state and the *stacked numeric meta* that has already resolved this moment into musical coordinates. Compose around that meta — do not contradict it.
+The user message is a JSON object describing the world state and the *stacked numeric meta* that has already resolved this moment into musical coordinates. Compose around that meta.
 
-The JSON keys:
+Notes on keys whose meaning isn't obvious:
 
-- \`state\`: clock (\`time.phase\`, \`time.dayOfWeek\`, \`time.hour\`), \`moonPhase\`, optional \`body.activity\` (still | walking | running | vehicle), optional \`location\` (one of 50 \`type\` ids plus the raw reverse-geocode hints \`place\`, \`city\`, \`country\`, \`nearby\`), and optional \`weather\`.
-- \`stacked\`: the canonical meta after all modifier stacking.
-  - \`energy\`: four axes \`motion\`, \`density\`, \`tension\`, \`brightness\` in [0,1] — read as numeric pressure on the score.
-  - \`mood\`: tag → weight (0..1). Higher weight ⇒ stronger pull. Top 4–6 tags should color the prose.
-  - \`inspiration.world\` and optional \`inspiration.worldSecondary\` — world ids from \`lexicon.worlds\`.
-  - \`inspiration.textureKeys\` — texture cue ids from \`lexicon.textures\`.
-  - \`tideEffective\` — the moon's tide multiplier on emotional dynamics; > 1 widens, < 1 compresses.
-  - \`weatherCondition\`, \`timePhase\`, \`moonPhase\` — echoed for convenience.
-- \`renderPlan.bpm\` — the BPM to target. Use this number (or a narrow band around it) explicitly in the metadata and in the section prompts.
-- \`renderPlan.totalDurationMs\` — total clip length in ms (typically 60000). Section durations sum to this.
-- \`lexicon\`: authored vocabulary for this song. Each entry is a phrase pool you can quote or recombine.
-  - \`product_positives\` / \`product_negatives\` — required anchors / blockers.
-  - \`worlds[worldId]\`, \`textures[textureKey]\`, \`moods[moodTag]\` — pools keyed by the ids in \`stacked\`.
-  - \`weather.scene\` + \`weather.texture_hints\` — pools for the active weather condition.
-  - \`moon_undertow\` — slow-bias phrases for the active moon phase.
-  - \`moon_tide_dynamics.{high_spring|mid|low_neap}\` — pick the bucket matching \`tideEffective\`.
-  - \`day\` — day-of-week flavor.
-  - optional \`body\`, \`location\` — pools for body activity and classified location type.
-  - \`negatives_fixed\` — anti-prompts to fold into negative styles.
-- \`vibes.phraseOfTheMoment\` — an optional two-word phrase distilled from space weather. Use as flavor, not directive.
-- \`recentHistory\` — the previous few songs as \`{ metadata, measuredFeatures? }\`. Trust \`measuredFeatures\` over \`metadata\` when they disagree.
+- \`stacked.energy.density\` (0..1) — how layered / harmonically packed the score feels. Low ⇒ sparse, large empty space between elements; high ⇒ many simultaneous voices, thick orchestration.
+- \`stacked.tideEffective\` — the moon's multiplier on emotional dynamic range. > 1 widens (broader swells, more contrast); < 1 compresses (flatter, narrower).
+- \`stacked.inspiration.world\` / \`worldSecondary\` — primary and (optional) blend-with world ids; both are keys into \`lexicon.worlds\`.
+- \`lexicon\` — authored phrase pools you can quote or recombine. \`product_positives\` / \`product_negatives\` are required anchors / blockers; the keyed pools (\`worlds[worldId]\`, \`textures[textureKey]\`, \`moods[moodTag]\`, \`weather.scene\` + \`weather.texture_hints\`, \`moon_undertow\`, \`moon_tide_dynamics.{high_spring|mid|low_neap}\` chosen by \`tideEffective\`, \`day\`, optional \`body\` / \`location\`) carry the spec's voice — draw from them so the prose doesn't sound like generic AI output.
+- \`vibes\` — an optional two-word phrase distilled from space weather (omitted when none). Use as flavor, never as a directive.
+- \`recentHistory\` — last few songs as \`{ metadata, measuredFeatures? }\`. Trust \`measuredFeatures\` over \`metadata\` when they disagree (the former is what the audio actually sounded like; the latter is what was requested).
 
 The \`compose_song\` tool returns:
 - \`metadata\`: bpmRange (band around \`renderPlan.bpm\`), key, intensity (≈ \`stacked.energy.tension\` or \`motion\` depending on your read), instrumentation, genreTags, transitionIntent (continue | evolve | shift | break).
-- \`composition\`: overallPrompt + 1 or 2 sections summing to exactly 60 seconds. Each clip is a short 60-second gesture that crossfades into the next, not a full song. Each section prompt must explicitly embed BPM, key, lead instrumentation, and an intensity descriptor so metadata and prose agree.
+- \`composition\`: overallPrompt + 1 or 2 sections whose \`durationSec\` values sum to \`renderPlan.totalDurationMs / 1000\`. Each section prompt must explicitly embed BPM, key, lead instrumentation, and an intensity descriptor so metadata and prose agree.
 
-Instrumental only — no lyrics, no vocal lines. Draw from the lexicon vocabulary in your prose so this song sounds like the spec's voice, not generic AI prose.`;
+Instrumental only — no lyrics, no vocal lines.`;
 
 const COMPOSE_TOOL = {
   name: 'compose_song',
@@ -269,7 +254,7 @@ const LOCATION_TYPES_ALL: LocationType[] = [
   'rural_settlement', 'wilderness_or_remote',
 ];
 
-const LOCATION_CLASSIFY_SYSTEM_PROMPT = `You classify a real-world place into ONE id from a fixed 50-option taxonomy.
+export const LOCATION_CLASSIFY_SYSTEM_PROMPT = `You classify a real-world place into ONE id from a fixed 50-option taxonomy.
 
 Read the supplied reverse-geocode hints (Nominatim place/road/city, OSM category/type, nearby POIs) and reply with the SINGLE best-fit id. If genuinely ambiguous, prefer the broader/catch-all category (\`retail_shop\` for any small business, \`home_interior\` for any dwelling including hotels, \`on_foot_street\` for generic urban pedestrian). If no information is usable, reply \`unknown\`.
 

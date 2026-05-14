@@ -42,7 +42,6 @@ export function buildClaudePromptJson(input: BuildPromptInput): ClaudePromptJson
       totalDurationMs: input.renderPlan.totalDurationMs,
     },
     lexicon: input.lexicon,
-    vibes: {},
     recentHistory: input.recentHistory,
   };
 
@@ -70,7 +69,7 @@ export function buildClaudePromptJson(input: BuildPromptInput): ClaudePromptJson
   if (sv.weather) out.state.weather = sv.weather;
 
   if (input.vibes.phraseOfTheMoment) {
-    out.vibes.phraseOfTheMoment = input.vibes.phraseOfTheMoment;
+    out.vibes = input.vibes.phraseOfTheMoment;
   }
 
   return out;
