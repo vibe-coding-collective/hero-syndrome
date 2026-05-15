@@ -161,20 +161,6 @@
     transition: transform 1.4s cubic-bezier(0.2, 0.6, 0.2, 1);
   }
 
-  .phone-dial__state-label {
-    fill: #11161f;
-    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-    font-size: 11.5px;
-    font-weight: 500;
-    letter-spacing: 1.1px;
-    dominant-baseline: middle;
-    pointer-events: none;
-  }
-
-  .phone-dial__artboard--night .phone-dial__state-label {
-    fill: rgba(238, 239, 255, 0.92);
-  }
-
   .phone-dial__sun-orbit {
     opacity: 0.42;
     stroke: #fff;
@@ -236,7 +222,11 @@
 
   .phone-dial__music-progress-fill {
     stroke: rgba(54, 63, 72, 0.68);
-    transition: stroke 220ms ease, opacity 220ms ease;
+    /* stroke-dashoffset transition is what keeps the line moving continuously
+       between the 250ms progressClock ticks — without it, the ring would
+       advance in visible 4-per-second steps. Slightly longer than the tick so
+       successive transitions overlap and there is no per-tick easing pause. */
+    transition: stroke 220ms ease, opacity 220ms ease, stroke-dashoffset 280ms linear;
     filter: drop-shadow(0 1px 3px rgba(20, 24, 32, 0.18));
   }
 
@@ -300,23 +290,6 @@
     pointer-events: none;
   }
 
-  .phone-dial__moon-glow {
-    fill: rgba(180, 191, 255, 0.18);
-    filter: drop-shadow(0 0 14px rgba(166, 183, 255, 0.48));
-  }
-
-  .phone-dial__moon-disc {
-    fill: #f1f1ff;
-  }
-
-  .phone-dial__moon-shadow {
-    fill: #1d2444;
-  }
-
-  .phone-dial__moon-speck {
-    fill: rgba(186, 190, 222, 0.8);
-  }
-
   .phone-dial__stars {
     fill: rgba(239, 242, 255, 0.75);
     pointer-events: none;
@@ -361,17 +334,12 @@
   .phone-dial__material-label {
     fill: #050506;
     font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-    font-size: 13.6px;
+    font-size: 12.2px;
     font-weight: 500;
-    letter-spacing: 1.3px;
+    letter-spacing: 0.65px;
     dominant-baseline: middle;
     text-anchor: middle;
     pointer-events: none;
-  }
-
-  .phone-dial__material-label--bottom {
-    font-size: 12.2px;
-    letter-spacing: 0.65px;
   }
 
   .phone-dial__run-label {
@@ -440,18 +408,9 @@
     filter: drop-shadow(0 4px 9px rgba(26, 34, 44, 0.14));
   }
 
-  .phone-dial__orb-bezel-inner-edge {
-    stroke: rgba(255, 255, 255, 0.48);
-    stroke-width: 1.2px;
-  }
-
   .phone-dial__artboard--night .phone-dial__orb-bezel-fill {
     fill: rgba(200, 209, 230, 0.24);
     filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.32));
-  }
-
-  .phone-dial__artboard--night .phone-dial__orb-bezel-inner-edge {
-    stroke: rgba(238, 239, 255, 0.32);
   }
 
   .phone-dial__data-readouts {

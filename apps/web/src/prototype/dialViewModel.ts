@@ -1,6 +1,7 @@
 import type {
   BodyActivity,
   LocationType,
+  MoonPhase,
   StateVector,
   TimePhase,
   WeatherCondition,
@@ -30,6 +31,10 @@ export interface DialViewModel {
   phaseLabel: string;
   dayOfWeek: string;
   isNight: boolean;
+  /** Lunar phase from `song.stacked.moonPhase`. Drives the moon icon at night.
+   *  Falls back to 'full' when stacked metadata isn't available (preludes,
+   *  malformed payloads). */
+  moonPhase: MoonPhase;
   sunriseHour: number;
   sunsetHour: number;
   weatherLabel: string;
@@ -188,6 +193,7 @@ export function buildDialViewModelFromSong(song: PlayedSong): DialViewModel | nu
     phaseLabel: displayToken(phase),
     dayOfWeek: state.time.dayOfWeek.toUpperCase(),
     isNight,
+    moonPhase: song.stacked.moonPhase,
     sunriseHour,
     sunsetHour,
     // Empty strings rather than placeholder text when data is missing — the

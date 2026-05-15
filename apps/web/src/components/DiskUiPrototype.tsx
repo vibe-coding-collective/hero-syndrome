@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { MoonPhase } from '@hero-syndrome/shared';
 import { AUDIO_RAMP_SEC } from '../audio/engine';
 import { useStore } from '../state/store';
 import {
@@ -21,6 +22,20 @@ const ASSETS = {
   selectionLine: '/prototype-dial/selection-line.svg',
   selectionPointer: '/prototype-dial/selection-pointer.svg',
 } as const;
+
+/** Phase-specific moon icons. Each SVG carries its own crescent/gibbous mask
+ *  and drop-shadow filter; the lunar texture is a shared external PNG so the
+ *  browser only fetches it once across all phases. */
+const MOON_ASSETS: Record<MoonPhase, string> = {
+  new: '/prototype-dial/moon/new.svg',
+  waxing_crescent: '/prototype-dial/moon/waxing-crescent.svg',
+  first_quarter: '/prototype-dial/moon/first-quarter.svg',
+  waxing_gibbous: '/prototype-dial/moon/waxing-gibbous.svg',
+  full: '/prototype-dial/moon/full.svg',
+  waning_gibbous: '/prototype-dial/moon/waning-gibbous.svg',
+  third_quarter: '/prototype-dial/moon/third-quarter.svg',
+  waning_crescent: '/prototype-dial/moon/waning-crescent.svg',
+};
 
 const FRAME = { width: 393, height: 852 };
 const DIAL_CENTER = { x: 197, y: 426 };
@@ -92,27 +107,6 @@ function bottomArcPath(radius: number, midAngle: number, span = 20): string {
   return `M ${start.x.toFixed(3)} ${start.y.toFixed(3)} A ${radius} ${radius} 0 0 0 ${end.x.toFixed(3)} ${end.y.toFixed(3)}`;
 }
 
-function readableArcPath(radius: number, midAngle: number, span = 20): string {
-  const normalized = normalizeDegrees(midAngle);
-  if (normalized > 90 && normalized < 270) return bottomArcPath(radius, midAngle, span);
-  return arcPath(radius, midAngle, span);
-}
-
-function ringPath(radius: number, startAngle: number, span: number, shouldClose = false): string {
-  const segmentCount = Math.max(2, Math.ceil(Math.abs(span) / 4));
-  const points = Array.from({ length: segmentCount + 1 }, (_, index) => {
-    const angle = startAngle + span * (index / segmentCount);
-    return pointOnOrbit(angle, radius);
-  });
-  const [first, ...rest] = points;
-
-  return [
-    `M ${first!.x.toFixed(3)} ${first!.y.toFixed(3)}`,
-    ...rest.map((point) => `L ${point.x.toFixed(3)} ${point.y.toFixed(3)}`),
-    shouldClose ? 'Z' : '',
-  ].join(' ');
-}
-
 function annularRingPath(innerRadius: number, outerRadius: number, startAngle = 0): string {
   const segmentCount = 96;
   const outerPoints = Array.from({ length: segmentCount + 1 }, (_, index) => {
@@ -132,11 +126,6 @@ function annularRingPath(innerRadius: number, outerRadius: number, startAngle = 
     ...innerRest.map((point) => `L ${point.x.toFixed(3)} ${point.y.toFixed(3)}`),
     'Z',
   ].join(' ');
-}
-
-function progressArcPath(radius: number, startAngle: number, progress: number): string {
-  const span = Math.max(0.1, Math.min(359.9, clamp01(progress) * 359.9));
-  return ringPath(radius, startAngle, span);
 }
 
 function annularArcPath(innerRadius: number, outerRadius: number, midAngle: number, span: number): string {
@@ -178,25 +167,51 @@ function ClockMarks() {
   );
 }
 
+/** True-circle progress ring. Track/backing are plain <circle>s so the curve
+ *  renders at device resolution (no polygon facets). The fill uses
+ *  pathLength=1 + stroke-dashoffset and a CSS transition longer than the
+ *  driver tick — the browser interpolates the offset every frame, so the line
+ *  sweeps continuously instead of stepping at the 250ms cadence. */
 function MusicProgressRing(props: {
   mode: MusicProgressMode;
   progress: number;
   startAngle: number;
+  songKey: string;
 }) {
   const clampedProgress = clamp01(props.progress);
-  const trackPath = ringPath(MUSIC_PROGRESS_RADIUS, props.startAngle, 360, true);
-  const fillPath = progressArcPath(MUSIC_PROGRESS_RADIUS, props.startAngle, clampedProgress);
-
   return (
     <g
       aria-label={`Music progress: ${Math.round(clampedProgress * 100)} percent`}
       className={`phone-dial__music-progress phone-dial__music-progress--${props.mode}`}
       role="img"
     >
-      <path className="phone-dial__music-progress-backing" d={trackPath} fill="none" />
-      <path className="phone-dial__music-progress-track" d={trackPath} fill="none" />
+      <circle
+        className="phone-dial__music-progress-backing"
+        cx={DIAL_CENTER.x}
+        cy={DIAL_CENTER.y}
+        fill="none"
+        r={MUSIC_PROGRESS_RADIUS}
+      />
+      <circle
+        className="phone-dial__music-progress-track"
+        cx={DIAL_CENTER.x}
+        cy={DIAL_CENTER.y}
+        fill="none"
+        r={MUSIC_PROGRESS_RADIUS}
+      />
       {props.mode !== 'idle' ? (
-        <path className="phone-dial__music-progress-fill" d={fillPath} fill="none" />
+        <circle
+          className="phone-dial__music-progress-fill"
+          cx={DIAL_CENTER.x}
+          cy={DIAL_CENTER.y}
+          fill="none"
+          key={`fill-${props.songKey}`}
+          pathLength={1}
+          r={MUSIC_PROGRESS_RADIUS}
+          strokeDasharray="1 1"
+          strokeDashoffset={1 - clampedProgress}
+          transform={`rotate(${props.startAngle - 90} ${DIAL_CENTER.x} ${DIAL_CENTER.y})`}
+        />
       ) : null}
     </g>
   );
@@ -245,13 +260,6 @@ function OrbBezel() {
         d={annularRingPath(ORB_BEZEL_INNER_RADIUS, ORB_BEZEL_OUTER_RADIUS)}
         fillRule="evenodd"
       />
-      <circle
-        className="phone-dial__orb-bezel-inner-edge"
-        cx={DIAL_CENTER.x}
-        cy={DIAL_CENTER.y}
-        fill="none"
-        r={ORB_BEZEL_INNER_RADIUS}
-      />
     </g>
   );
 }
@@ -269,18 +277,19 @@ function NightWeatherIcon() {
   );
 }
 
-function MoonIndicator(props: { x: number; y: number }) {
+/** Moon indicator rendered from the phase-specific asset (each SVG carries its
+ *  own mask + drop-shadow filter; phase determines which crescent/gibbous
+ *  silhouette is illuminated). 78×78 viewBox matches the source SVGs exactly,
+ *  so positioning by (props.x - 39, props.y - 39) puts the moon disc at
+ *  (props.x, props.y). Falls back to 'full' for safety. */
+function MoonIndicator(props: { x: number; y: number; phase: MoonPhase }) {
+  const href = MOON_ASSETS[props.phase] ?? MOON_ASSETS.full;
   return (
     <g
       className="phone-dial__moon-indicator phone-dial__celestial-indicator"
       transform={`translate(${props.x - 39} ${props.y - 39})`}
     >
-      <circle className="phone-dial__moon-glow" cx="39" cy="39" r="34" />
-      <circle className="phone-dial__moon-disc" cx="39" cy="39" r="22" />
-      <circle className="phone-dial__moon-shadow" cx="49" cy="31" r="23" />
-      <circle className="phone-dial__moon-speck" cx="31" cy="31" r="2.3" />
-      <circle className="phone-dial__moon-speck" cx="43" cy="48" r="1.7" />
-      <circle className="phone-dial__moon-speck" cx="33" cy="51" r="1.2" />
+      <image href={href} width="78" height="78" />
     </g>
   );
 }
@@ -517,7 +526,6 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
   const musicProgressValue = playbackProgress ?? 0;
 
   const hourAngle = hourToAngle(model.hour);
-  const stateTextAngle = normalizeDegrees(hourAngle - 38);
   const sunPoint = pointOnOrbit(hourAngle, SUN_ORBIT_RADIUS);
   const sunrisePoint = pointOnOrbit(hourToAngle(model.sunriseHour), SUN_ORBIT_RADIUS);
   const sunsetPoint = pointOnOrbit(hourToAngle(model.sunsetHour), SUN_ORBIT_RADIUS);
@@ -552,9 +560,8 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
             <stop offset="0.52" stopColor={model.isNight ? '#22254a' : '#c7d8e3'} />
             <stop offset="1" stopColor={model.isNight ? '#060918' : '#FFFFFF'} />
           </linearGradient>
-          <path id="stateTextArc" d={readableArcPath(OUTER_RADIUS - 6, stateTextAngle, 62)} />
           <path id="topSelectionArc" d={arcPath(BUTTON_TEXT_RADIUS, 0, BUTTON_ARC_SPAN - 8)} />
-          <path id="topMaterialArc" d={arcPath(TOP_MATERIAL_LABEL_RADIUS, 0, 64)} />
+          <path id="topMaterialArc" d={arcPath(TOP_MATERIAL_LABEL_RADIUS, 0, 82)} />
           <path id="bottomMaterialArc" d={bottomArcPath(BOTTOM_MATERIAL_LABEL_RADIUS, 180, 82)} />
           <path id="bottomSelectionArc" d={bottomArcPath(BUTTON_TEXT_RADIUS, 180, BUTTON_ARC_SPAN - 8)} />
           <filter id="backgroundTone" colorInterpolationFilters="sRGB">
@@ -600,6 +607,7 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
         <MusicProgressRing
           mode={musicProgressMode}
           progress={musicProgressValue}
+          songKey={currentSong?.songId ?? 'idle'}
           startAngle={hourToAngle(model.sunriseHour)}
         />
         <circle
@@ -629,13 +637,11 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
 
         <ClockMarks />
 
-        <text className="phone-dial__state-label">
-          <textPath href="#stateTextArc" startOffset="50%" textAnchor="middle">
-            {model.phaseLabel}
-          </textPath>
-        </text>
-
-        {model.isNight ? <MoonIndicator x={sunPoint.x} y={sunPoint.y} /> : <SunIndicator x={sunPoint.x} y={sunPoint.y} />}
+        {model.isNight ? (
+          <MoonIndicator phase={model.moonPhase} x={sunPoint.x} y={sunPoint.y} />
+        ) : (
+          <SunIndicator x={sunPoint.x} y={sunPoint.y} />
+        )}
 
         <image
           href={ASSETS.innerRing}
@@ -676,7 +682,7 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
           </text>
         ) : null}
         {model.forceLabel ? (
-          <text className="phone-dial__material-label phone-dial__material-label--bottom">
+          <text className="phone-dial__material-label">
             <textPath href="#bottomMaterialArc" startOffset="50%" textAnchor="middle">
               {model.forceLabel}
             </textPath>
