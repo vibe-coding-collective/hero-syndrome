@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
+import DataDrawer from '../components/DataDrawer';
 import DiskUiPrototype from '../components/DiskUiPrototype';
+import { useStore } from '../state/store';
 import { startScene, clearActiveRuntime } from '../session/start';
 import { consumeUnlockedContext, peekUnlockedContext } from '../audio/engine';
 import { endScene } from '../session/end';
@@ -17,6 +19,11 @@ export default function Scene() {
   const [hasStashedContext] = useState(() => peekUnlockedContext() != null);
   const [stage, setStage] = useState<Stage>('starting');
   const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
+  const songs = useStore((s) => s.songs);
+  const currentSongId = useStore((s) => s.currentSongId);
+  const currentSong = currentSongId
+    ? songs.find((song) => song.songId === currentSongId) ?? null
+    : null;
   const stageRef = useRef<Stage>('starting');
   const idleRef = useRef<IdleWatcher | null>(null);
   const startedRef = useRef(false);
@@ -74,6 +81,7 @@ export default function Scene() {
   return (
     <div className="phone-dial-stage">
       <DiskUiPrototype analyser={analyser} />
+      {currentSong ? <DataDrawer song={currentSong} /> : null}
       <button
         type="button"
         onClick={onEnd}

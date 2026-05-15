@@ -123,6 +123,17 @@ const LOCATION_TYPE_LABELS: Partial<Record<LocationType, string>> = {
   unknown: 'UNKNOWN',
 };
 
+const PHASE_LABELS: Record<TimePhase, string> = {
+  witching_hour: 'WITCHING HOUR',
+  dawn: 'FIRST LIGHT',
+  morning: 'MORNING HAZE',
+  noon: 'HIGH NOON',
+  afternoon: 'LONG SHADOWS',
+  golden_hour: 'GOLDEN HOUR',
+  dusk: 'DUSK',
+  night: 'DEEP NIGHT',
+};
+
 const WEATHER_LABELS: Record<WeatherCondition, string> = {
   clear: 'CLEAR',
   mainly_clear: 'MAINLY CLEAR',
@@ -190,7 +201,7 @@ export function buildDialViewModelFromSong(song: PlayedSong): DialViewModel | nu
     songId: song.songId,
     hour,
     phase,
-    phaseLabel: displayToken(phase),
+    phaseLabel: PHASE_LABELS[phase],
     dayOfWeek: state.time.dayOfWeek.toUpperCase(),
     isNight,
     moonPhase: song.stacked.moonPhase,

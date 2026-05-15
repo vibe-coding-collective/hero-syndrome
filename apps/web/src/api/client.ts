@@ -1,5 +1,7 @@
 import type {
   CosmicRes,
+  DescribeReq,
+  DescribeRes,
   EpisodeRes,
   FinalizeReq,
   FinalizeRes,
@@ -39,6 +41,7 @@ async function jpost<T>(path: string, body: unknown): Promise<T> {
 
 export const api = {
   generate: (body: GenerateReq) => jpost<GenerateRes>('/generate', body),
+  describe: (body: DescribeReq) => jpost<DescribeRes>('/describe', body),
   finalize: (sessionId: string, body: FinalizeReq) =>
     jpost<FinalizeRes>(`/episode/${sessionId}/finalize`, body),
   episode: (id: string) => jget<EpisodeRes>(`/episode/${id}`),

@@ -1,10 +1,13 @@
 import type {
+  DescribeReq,
+  DescribeRes,
   FinalizeReq,
   GenerateReq,
   GenerateRes,
   MeasuredFeatures,
   SessionRecord,
 } from '@hero-syndrome/shared';
+import { runDescribe } from './describe';
 import { runGenerate } from './generate';
 import { finalizeSession } from './episode';
 import { getCosmic } from './cosmic';
@@ -30,6 +33,9 @@ export class SessionDO {
     if (!sessionId) return new Response('missing sessionId', { status: 400 });
     if (url.pathname === '/generate' && request.method === 'POST') {
       return this.handleGenerate(sessionId, request);
+    }
+    if (url.pathname === '/describe' && request.method === 'POST') {
+      return this.handleDescribe(sessionId, request);
     }
     if (url.pathname === '/finalize' && request.method === 'POST') {
       return this.handleFinalize(sessionId, request);
@@ -161,6 +167,48 @@ export class SessionDO {
       delete s.lastGenerateTs;
       await this.saveState(s);
       return new Response('generate failed', { status: 503 });
+    }
+  }
+
+  private async handleDescribe(sessionId: string, request: Request): Promise<Response> {
+    const s = await this.loadState(sessionId);
+    if (!s) return new Response('no session', { status: 404 });
+    const body = (await request.json()) as DescribeReq;
+    if (!body?.songId) return new Response('missing songId', { status: 400 });
+
+    const song = s.songs.find((entry) => entry.songId === body.songId);
+    if (!song) return new Response('song not found', { status: 404 });
+
+    // Cache: if the song already has a description, return it without
+    // re-calling Claude. Cheap idempotent endpoint — clients can retry.
+    if (song.title && song.description) {
+      return Response.json({
+        songId: song.songId,
+        title: song.title,
+        description: song.description,
+      } satisfies DescribeRes);
+    }
+
+    try {
+      const result = await runDescribe(this.env, song);
+      song.title = result.title;
+      song.description = result.description;
+      this.appendDebug(s, 'song.describe', {
+        songId: song.songId,
+        latencyMs: result.latencyMs,
+      });
+      await this.saveState(s);
+      return Response.json({
+        songId: song.songId,
+        title: result.title,
+        description: result.description,
+      } satisfies DescribeRes);
+    } catch (err) {
+      const errStr = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+      console.error(JSON.stringify({ event: 'describe.error', sessionId, songId: body.songId, error: errStr }));
+      this.appendDebug(s, 'describe.error', String(err));
+      await this.saveState(s);
+      return new Response('describe failed', { status: 503 });
     }
   }
 

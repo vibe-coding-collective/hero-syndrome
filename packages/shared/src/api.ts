@@ -48,6 +48,20 @@ export interface GenerateRes {
   phraseOfTheMoment?: PhraseOfTheMoment;
 }
 
+export interface DescribeReq {
+  sessionId: string;
+  songId: string;
+}
+
+export interface DescribeRes {
+  songId: string;
+  /** UPPERCASE title, 2-5 words. Caller can rely on the casing — the worker
+   *  uppercases whatever Claude returns. */
+  title: string;
+  /** ~220 char description starting with BPM. Already capped + ellipsized. */
+  description: string;
+}
+
 export interface FinalizeReq {
   title?: string;
   endedAt: string;

@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import type { MoonPhase } from '@hero-syndrome/shared';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { MoonPhase, WeatherCondition } from '@hero-syndrome/shared';
 import { AUDIO_RAMP_SEC } from '../audio/engine';
 import { useStore } from '../state/store';
 import {
@@ -42,18 +42,23 @@ const DIAL_CENTER = { x: 197, y: 426 };
 const CENTER_ORB_SIZE = 111;
 const ORB_BEZEL_INNER_RADIUS = CENTER_ORB_SIZE / 2 - 1.5;
 const ORB_BEZEL_OUTER_RADIUS = 80.5;
-const SUN_ORBIT_RADIUS = 147;
+const SUN_ORBIT_RADIUS = 137;
 const OUTER_RADIUS = 181;
 const MUSIC_PROGRESS_RADIUS = OUTER_RADIUS - 6;
 const TOP_MATERIAL_LABEL_RADIUS = 66;
 const BOTTOM_MATERIAL_LABEL_RADIUS = 66;
 const LOCATION_LABEL_RADIUS = 119;
-const BUTTON_INNER_RADIUS = 72;
-const BUTTON_OUTER_RADIUS = 96;
-const BUTTON_TEXT_RADIUS = 84;
+const BUTTON_INNER_RADIUS = 75;
+const BUTTON_OUTER_RADIUS = 101;
+const BUTTON_TEXT_RADIUS = 88;
 const BUTTON_ARC_SPAN = 92;
 const SELECTION_CONTROL_RING_SIZE = 213;
 const SELECTION_POINTER = { width: 85.336, height: 111.5 };
+/** Fixed light-blue palette for the reactive orb. Replaces the previous
+ *  per-weather dynamic palette so the orb reads as the same kind of object
+ *  across all dial states (day rain, night clear, etc.) — only the music
+ *  reactivity and adaptive brightness move. */
+const ORB_COLORS: [string, string] = ['#b7ccff', '#5f7ea8'];
 /** Total window the song-boundary overlay is mounted for, in ms. The CSS
  *  animations in `phone-dial__location-overlay` and `phone-dial__location-list`
  *  must sum to this duration. The wheel transition fires at
@@ -63,6 +68,13 @@ const OVERLAY_DURATION_MS = 2500;
 const TRANSITION_LEAD_MS = 2500;
 
 type MusicProgressMode = 'idle' | 'loading' | 'playback';
+
+type DialTurnStyle = CSSProperties & { '--dial-turn-from': string };
+
+interface DialTurnAnimation {
+  key: string;
+  style: DialTurnStyle;
+}
 
 interface DiskUiPrototypeProps {
   /** AnalyserNode from the parent AudioEngine. When present and audio is
@@ -77,6 +89,99 @@ function normalizeDegrees(value: number): number {
 function clamp01(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.min(1, Math.max(0, value));
+}
+
+/** True for any daytime weather that should show cloud highlights in the
+ *  background — anything other than clear / mainly-clear skies. Drives the
+ *  conditional `cloudHighlight` overlay so the dial reads like a real sky
+ *  during overcast, drizzle, rain, snow, fog and storms. */
+function isCloudyCondition(condition: WeatherCondition): boolean {
+  return condition !== 'clear' && condition !== 'mainly_clear';
+}
+
+function uniqueIds(ids: string[]): string[] {
+  return Array.from(new Set(ids.filter(Boolean)));
+}
+
+function modulo(value: number, divisor: number): number {
+  return ((value % divisor) + divisor) % divisor;
+}
+
+function shortestIndexDelta(fromIndex: number, toIndex: number, count: number): number {
+  const raw = toIndex - fromIndex;
+  const half = count / 2;
+  const normalized = modulo(raw + half, count) - half;
+  if (count % 2 === 0 && Math.abs(normalized) === half) {
+    return (Math.random() < 0.5 ? -1 : 1) * half;
+  }
+  return normalized;
+}
+
+function turnFromPreviousSelection(
+  previousSelectedId: string,
+  selectedId: string,
+  previousOptionIds: string[],
+  currentOptionIds: string[],
+): number {
+  const candidateSets = [
+    uniqueIds(currentOptionIds),
+    uniqueIds(previousOptionIds),
+    uniqueIds([...previousOptionIds, ...currentOptionIds]),
+  ];
+
+  for (const ids of candidateSets) {
+    if (ids.length < 2) continue;
+    const previousIndex = ids.indexOf(previousSelectedId);
+    const selectedIndex = ids.indexOf(selectedId);
+    if (previousIndex === -1 || selectedIndex === -1) continue;
+    const delta = shortestIndexDelta(previousIndex, selectedIndex, ids.length);
+    if (delta === 0) return 0;
+    const step = 360 / ids.length;
+    const magnitude = Math.min(150, Math.max(24, Math.abs(delta) * step));
+    return delta > 0 ? magnitude : -magnitude;
+  }
+
+  return (Math.random() < 0.5 ? -1 : 1) * 42;
+}
+
+function useShortestDialTurn(
+  selectedId: string | null,
+  optionIds: string[],
+  scope: string,
+): DialTurnAnimation {
+  const previousRef = useRef<{ selectedId: string | null; optionIds: string[] }>({
+    selectedId: null,
+    optionIds: [],
+  });
+  const sequenceRef = useRef(0);
+  const [turn, setTurn] = useState<{ key: string; fromDegrees: number }>(() => ({
+    key: `${scope}-initial`,
+    fromDegrees: 0,
+  }));
+  const optionSignature = optionIds.join('|');
+
+  useLayoutEffect(() => {
+    const previous = previousRef.current;
+    if (selectedId && previous.selectedId && previous.selectedId !== selectedId) {
+      const fromDegrees = turnFromPreviousSelection(
+        previous.selectedId,
+        selectedId,
+        previous.optionIds,
+        optionIds,
+      );
+      sequenceRef.current += 1;
+      setTurn({
+        key: `${scope}-${sequenceRef.current}`,
+        fromDegrees,
+      });
+    }
+    previousRef.current = { selectedId, optionIds };
+  }, [optionSignature, optionIds, scope, selectedId]);
+
+  return {
+    key: turn.key,
+    style: { '--dial-turn-from': `${turn.fromDegrees.toFixed(3)}deg` },
+  };
 }
 
 function hourToAngle(hour: number): number {
@@ -465,6 +570,18 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
     [displayedSong],
   );
   const modelSongId = model?.songId ?? null;
+  const locationOptionIds = useMemo(
+    () => model?.locationOptions.map((option) => option.id) ?? [],
+    [model],
+  );
+  const activityOptionIds = useMemo(
+    () => model?.activityOptions.map((option) => option.id) ?? [],
+    [model],
+  );
+  const selectedLocationId = model?.locationOptions[0]?.id ?? (model?.coordsLabel ? `coords:${model.coordsLabel}` : null);
+  const selectedActivityId = model?.activityOptions[0]?.id ?? null;
+  const locationTurn = useShortestDialTurn(selectedLocationId, locationOptionIds, 'location');
+  const activityTurn = useShortestDialTurn(selectedActivityId, activityOptionIds, 'activity');
 
   useEffect(() => {
     const timer = window.setInterval(() => setProgressClock(performance.now()), 250);
@@ -534,10 +651,14 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
   // phase shown near the sun indicator.
   const topButtonLabel = model.locationOptions[0]?.label || model.coordsLabel;
   const bottomButtonLabel = model.activityOptions[0]?.label ?? '';
-  // Top readout line: weather + temp, or phase + day-of-week as fallback.
-  const topReadout = [model.weatherLabel, model.tempLabel].filter(Boolean).join(' / ')
+  // Top-of-dial readouts: 4 centered lines that sit between the cloud icon and
+  // the dial outer ring. Built from the same model fields as the dial body.
+  const weatherReadout = [model.weatherLabel, model.tempLabel].filter(Boolean).join(' / ')
     || [model.phaseLabel, model.dayOfWeek].filter(Boolean).join(' / ');
-  const bottomReadout = [model.placeLabel || model.coordsLabel, `${model.bpm} BPM`, model.key].filter(Boolean).join(' / ');
+  const motionReadout = model.motionLabel;
+  const musicReadout = [`${model.bpm} BPM`, model.key].filter(Boolean).join(' / ');
+  const topMood = model.moodTags[0]?.toUpperCase() ?? '';
+  const placeMoodReadout = [model.placeLabel || model.coordsLabel, topMood].filter(Boolean).join(' / ');
 
   return (
     <section
@@ -556,36 +677,52 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
       >
         <defs>
           <linearGradient id="journeyBackground" x1="196.5" x2="196.5" y1="0" y2="852" gradientUnits="userSpaceOnUse">
-            <stop stopColor={model.isNight ? '#121833' : '#90B5D0'} />
-            <stop offset="0.52" stopColor={model.isNight ? '#22254a' : '#c7d8e3'} />
-            <stop offset="1" stopColor={model.isNight ? '#060918' : '#FFFFFF'} />
+            <stop stopColor={model.isNight ? '#0e1432' : '#7ab3dc'} />
+            <stop offset="0.45" stopColor={model.isNight ? '#1a2148' : '#b9d6ec'} />
+            <stop offset="1" stopColor={model.isNight ? '#04071a' : '#d6e5f1'} />
           </linearGradient>
           <path id="topSelectionArc" d={arcPath(BUTTON_TEXT_RADIUS, 0, BUTTON_ARC_SPAN - 8)} />
           <path id="topMaterialArc" d={arcPath(TOP_MATERIAL_LABEL_RADIUS, 0, 82)} />
           <path id="bottomMaterialArc" d={bottomArcPath(BOTTOM_MATERIAL_LABEL_RADIUS, 180, 82)} />
           <path id="bottomSelectionArc" d={bottomArcPath(BUTTON_TEXT_RADIUS, 180, BUTTON_ARC_SPAN - 8)} />
           <filter id="backgroundTone" colorInterpolationFilters="sRGB">
-            <feColorMatrix type="saturate" values="0.05" />
+            <feColorMatrix type="saturate" values="0.45" />
           </filter>
+          {/* Cloud highlight overlay: bright at top + bottom of the frame,
+              transparent through the middle. Layered over the desaturated
+              background image during daytime cloudy weather to read like a
+              real sky with cloud banks wrapping the horizon. */}
+          <linearGradient id="cloudHighlight" x1="196.5" x2="196.5" y1="0" y2="852" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stopColor="#ffffff" stopOpacity="0.78" />
+            <stop offset="0.14" stopColor="#ffffff" stopOpacity="0.38" />
+            <stop offset="0.5" stopColor="#ffffff" stopOpacity="0" />
+            <stop offset="0.85" stopColor="#ffffff" stopOpacity="0.32" />
+            <stop offset="1" stopColor="#ffffff" stopOpacity="0.7" />
+          </linearGradient>
         </defs>
 
         <rect width={FRAME.width} height={FRAME.height} fill="url(#journeyBackground)" />
-        <image
-          href={ASSETS.background}
-          filter="url(#backgroundTone)"
-          height="1399"
-          opacity={model.isNight ? '0.22' : '0.86'}
-          preserveAspectRatio="xMidYMid slice"
-          width="1670"
-          x="-660"
-          y="-282"
-        />
+        {model.isNight ? (
+          <image
+            href={ASSETS.background}
+            filter="url(#backgroundTone)"
+            height="1399"
+            opacity="0.16"
+            preserveAspectRatio="xMidYMid slice"
+            width="1670"
+            x="-660"
+            y="-282"
+          />
+        ) : null}
         <rect
           width={FRAME.width}
           height={FRAME.height}
-          fill={model.isNight ? '#0c1027' : '#90B5D0'}
-          opacity={model.isNight ? '0.62' : '0.45'}
+          fill={model.isNight ? '#0c1027' : '#7eaed6'}
+          opacity={model.isNight ? '0.58' : '0'}
         />
+        {!model.isNight && isCloudyCondition(model.weatherCondition) ? (
+          <rect width={FRAME.width} height={FRAME.height} fill="url(#cloudHighlight)" />
+        ) : null}
 
         {model.isNight ? (
           <>
@@ -661,7 +798,9 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
 
         <g
           aria-label={`Place: ${topButtonLabel}`}
-          className="phone-dial__arc-button phone-dial__arc-button--readonly"
+          className="phone-dial__arc-button phone-dial__arc-button--readonly phone-dial__arc-button--turning"
+          key={locationTurn.key}
+          style={locationTurn.style}
         >
           <path
             className="phone-dial__button-arc-fill"
@@ -682,7 +821,7 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
           </text>
         ) : null}
         {model.forceLabel ? (
-          <text className="phone-dial__material-label">
+          <text className="phone-dial__material-label phone-dial__material-label--bottom">
             <textPath href="#bottomMaterialArc" startOffset="50%" textAnchor="middle">
               {model.forceLabel}
             </textPath>
@@ -691,7 +830,9 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
 
         <g
           aria-label={`Activity: ${bottomButtonLabel}`}
-          className="phone-dial__arc-button phone-dial__arc-button--readonly"
+          className="phone-dial__arc-button phone-dial__arc-button--readonly phone-dial__arc-button--turning"
+          key={activityTurn.key}
+          style={activityTurn.style}
         >
           <path
             className="phone-dial__button-arc-fill"
@@ -704,14 +845,15 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
           </text>
         </g>
 
-        <g className="phone-dial__data-readouts">
-          <text x="25" y="710">{topReadout}</text>
-          <text x="25" y="728">{model.motionLabel}</text>
-          <text x="25" y="746">{bottomReadout}</text>
+        <g className="phone-dial__data-readouts phone-dial__data-readouts--top">
+          <text x={DIAL_CENTER.x} y={138} textAnchor="middle">{weatherReadout}</text>
+          <text x={DIAL_CENTER.x} y={158} textAnchor="middle">{motionReadout}</text>
+          <text x={DIAL_CENTER.x} y={178} textAnchor="middle">{musicReadout}</text>
+          <text x={DIAL_CENTER.x} y={198} textAnchor="middle">{placeMoodReadout}</text>
         </g>
       </svg>
       <CenterOrb
-        colors={model.orbColors}
+        colors={ORB_COLORS}
         isMusicPlaying={isPlaying}
         musicLevel={musicOrbLevel}
         seed={model.bpm + (model.locationOptions[0]?.label.length ?? 0)}

@@ -2,7 +2,10 @@ import type {
   ClaudePromptJson,
   Composition,
   LocationType,
+  PhraseOfTheMoment,
   SongMetadata,
+  StackedMeta,
+  StateVector,
 } from '@hero-syndrome/shared';
 
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
@@ -404,4 +407,79 @@ export async function rateEvocativenessBatch(input: EvocativenessBatchInput): Pr
     return input.words.map((_, i) => tokens[i] === 'yes');
   }
   return tokens.map((t) => t === 'yes');
+}
+
+export const DESCRIBE_SYSTEM_PROMPT = `You write a short title and description for the piece of music that is playing right now in someone's adaptive soundtrack. Call the \`describe_song\` tool exactly once.
+
+You receive: the world state at song time (weather, place, motion, time-of-day phase), the song's metadata (BPM, key, instrumentation, intensity, transitionIntent), the composition prompt that was sent to the music model, and the stacked numeric meta + phrase of the moment.
+
+Title: 2-5 words. Evocative, specific, like a chapter heading. Reference visible or sensed phenomena (weather, place, time of day, motion) over musical labels. Casing is irrelevant — the consumer uppercases. Example shape: "Wet pavement, Monday" / "First light on the bridge" / "Long shadows in the office".
+
+Description: 2-3 sentences, around 200 characters (hard ceiling 240). Start with the BPM (e.g. "78 BPM."). Then write in the voice of music journalism: specific about instrumentation, arrangement choices, and dynamic shape, with at most one sensory metaphor tied to the scene. Avoid generic adjectives ("beautiful", "emotional", "rich tapestry") and music-marketing clichés ("emotional journey", "soundscape"). Don't restate the world state as a list — let it color the prose.
+
+Cultural neutrality is a hard rule. Do not reference astrology, tarot, runes, zodiac, religion-specific symbols, or tradition-specific spiritual frames. Use universal phenomena (light, weather, motion, sound, time) and concrete neutrally-connotated objects.`;
+
+const DESCRIBE_TOOL = {
+  name: 'describe_song',
+  description: 'Emit a short evocative title and a music-journalism style description for the current song.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      title: {
+        type: 'string',
+        description: '2-5 words. Evocative, specific, scene-rooted. Casing irrelevant.',
+      },
+      description: {
+        type: 'string',
+        description: '2-3 sentences, ~200 characters (hard ceiling 240). Starts with BPM.',
+      },
+    },
+    required: ['title', 'description'],
+  },
+} as const;
+
+export interface DescribeSongInput {
+  apiKey: string;
+  context: {
+    stateVector: StateVector;
+    metadata: SongMetadata;
+    composition: Composition;
+    phraseOfTheMoment?: PhraseOfTheMoment;
+    stacked?: StackedMeta;
+  };
+}
+
+export interface DescribeSongResult {
+  title: string;
+  description: string;
+}
+
+export async function describeSong(input: DescribeSongInput): Promise<DescribeSongResult> {
+  const requestBody = {
+    model: MODEL,
+    max_tokens: 400,
+    temperature: 0.85,
+    system: DESCRIBE_SYSTEM_PROMPT,
+    tools: [DESCRIBE_TOOL],
+    tool_choice: { type: 'tool', name: 'describe_song' },
+    messages: [
+      {
+        role: 'user' as const,
+        content: JSON.stringify(input.context),
+      },
+    ],
+  };
+  const { data } = await callAnthropic(requestBody, input.apiKey);
+  const toolUse = extractToolUse(data);
+  if (!toolUse || toolUse.name !== 'describe_song') {
+    throw new AnthropicError('describe_song tool call missing');
+  }
+  const v = toolUse.input as { title?: unknown; description?: unknown };
+  if (typeof v.title !== 'string' || !v.title.trim()) {
+    throw new AnthropicError('describe_song missing title');
+  }
+  if (typeof v.description !== 'string' || !v.description.trim()) {
+    throw new AnthropicError('describe_song missing description');
+  }
+  return { title: v.title.trim(), description: v.description.trim() };
 }

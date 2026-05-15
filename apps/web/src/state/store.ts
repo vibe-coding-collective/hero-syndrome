@@ -29,6 +29,12 @@ export interface PlayedSong {
   locationType?: LocationType;
   bodyActivity?: BodyActivity;
   phraseOfTheMoment?: PhraseOfTheMoment;
+  /** UPPERCASE title from the /describe Claude call. Lazily populated after
+   *  the song lands; the drawer falls back to a phrase-of-the-moment
+   *  placeholder until this fills in. */
+  title?: string;
+  /** Music-journalism description (~200 chars, ellipsized) from /describe. */
+  description?: string;
 }
 
 export interface SessionSlice {
@@ -65,6 +71,7 @@ export interface AppState extends SessionSlice, PlaybackSlice, SensorsSlice, Epi
   appendSong: (s: PlayedSong) => void;
   setSongMeasured: (songId: string, features: MeasuredFeatures) => void;
   setSongStarted: (songId: string, startedAt: number, durationSec?: number) => void;
+  setSongDescription: (songId: string, title: string, description: string) => void;
   resetSession: () => void;
 }
 
@@ -109,6 +116,10 @@ export const useStore = create<AppState>((set) => ({
         // durationSec may include trailing silence that we've now stripped.
         ...(durationSec != null ? { durationSec } : {}),
       } : s)),
+    })),
+  setSongDescription: (songId, title, description) =>
+    set((p) => ({
+      songs: p.songs.map((s) => (s.songId === songId ? { ...s, title, description } : s)),
     })),
   resetSession: () => set({ ...INITIAL_STATE }),
 }));

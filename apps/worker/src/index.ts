@@ -1,4 +1,4 @@
-import type { GenerateReq } from '@hero-syndrome/shared';
+import type { DescribeReq, GenerateReq } from '@hero-syndrome/shared';
 import { preflight, withCors } from './cors';
 import { getCosmic } from './cosmic';
 import { rotateDailyVocab } from './cosmic/dailyRotation';
@@ -85,6 +85,21 @@ async function routeRequest(
     const id = env.SESSION_DO.idFromName(body.sessionId);
     const stub = env.SESSION_DO.get(id);
     return stub.fetch(`https://session/generate?sessionId=${encodeURIComponent(body.sessionId)}`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+      headers: { 'content-type': 'application/json' },
+    });
+  }
+
+  // POST /describe                     -> SessionDO
+  if (request.method === 'POST' && norm === '/describe') {
+    const body = (await request.clone().json()) as DescribeReq;
+    if (!body?.sessionId) return new Response('missing sessionId', { status: 400 });
+    if (!body?.songId) return new Response('missing songId', { status: 400 });
+    setSessionId(body.sessionId);
+    const id = env.SESSION_DO.idFromName(body.sessionId);
+    const stub = env.SESSION_DO.get(id);
+    return stub.fetch(`https://session/describe?sessionId=${encodeURIComponent(body.sessionId)}`, {
       method: 'POST',
       body: JSON.stringify(body),
       headers: { 'content-type': 'application/json' },
