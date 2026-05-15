@@ -13,6 +13,12 @@ export default function Hero() {
     navigate('/scene')
   }
 
+  const onTest = (): void => {
+    const ctx = AudioEngine.unlockedContext()
+    stashUnlockedContext(ctx)
+    navigate('/scene', { state: { testMode: true } })
+  }
+
   return (
     <section className="border-b border-ink/15">
       <div className="mx-auto max-w-7xl px-6 md:px-12 pt-20 md:pt-32 pb-20 md:pb-28">
@@ -40,6 +46,19 @@ export default function Hero() {
             className="group inline-flex items-baseline gap-3 px-7 py-4 border border-rust text-rust font-serif text-[20px] md:text-[22px] hover:bg-rust hover:text-paper transition-colors duration-300"
           >
             Begin scene
+            <span
+              aria-hidden
+              className="transition-transform duration-300 group-hover:translate-x-1"
+            >
+              →
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={onTest}
+            className="group inline-flex items-baseline gap-3 px-7 py-4 border border-ink/30 text-ink/60 font-serif text-[20px] md:text-[22px] hover:bg-ink/5 transition-colors duration-300"
+          >
+            Test
             <span
               aria-hidden
               className="transition-transform duration-300 group-hover:translate-x-1"

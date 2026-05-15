@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useLocation } from 'react-router-dom';
 import DataDrawer from '../components/DataDrawer';
 import DiskUiPrototype from '../components/DiskUiPrototype';
 import { useStore } from '../state/store';
-import { startScene, clearActiveRuntime } from '../session/start';
+import { startScene, startTestScene, clearActiveRuntime, getActiveRuntime } from '../session/start';
 import { consumeUnlockedContext, peekUnlockedContext } from '../audio/engine';
 import { endScene } from '../session/end';
 import { IdleWatcher } from '../session/idle';
@@ -12,6 +12,8 @@ type Stage = 'starting' | 'live' | 'ending';
 
 export default function Scene() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const testMode = (location.state as { testMode?: boolean } | null)?.testMode === true;
   // Capture the stash presence once at first render via useState's lazy
   // initializer. Don't re-peek on subsequent renders: the start effect
   // consumes the stash, so a re-peek after state changes would see null and
@@ -19,6 +21,7 @@ export default function Scene() {
   const [hasStashedContext] = useState(() => peekUnlockedContext() != null);
   const [stage, setStage] = useState<Stage>('starting');
   const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
+  const [isPaused, setIsPaused] = useState(false);
   const songs = useStore((s) => s.songs);
   const currentSongId = useStore((s) => s.currentSongId);
   const currentSong = currentSongId
@@ -47,7 +50,7 @@ export default function Scene() {
     startedRef.current = true;
     void (async () => {
       try {
-        const runtime = await startScene(ctx);
+        const runtime = await (testMode ? startTestScene(ctx) : startScene(ctx));
         setAnalyser(runtime.engine.analyser);
         setStage('live');
         const watcher = new IdleWatcher(() => {
@@ -62,6 +65,18 @@ export default function Scene() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const onOrbClick = (): void => {
+    const runtime = getActiveRuntime();
+    if (!runtime || stage !== 'live') return;
+    if (isPaused) {
+      void runtime.engine.ctx.resume();
+      setIsPaused(false);
+    } else {
+      void runtime.engine.ctx.suspend();
+      setIsPaused(true);
+    }
+  };
 
   const onEnd = async (): Promise<void> => {
     setStage('ending');
@@ -80,7 +95,7 @@ export default function Scene() {
 
   return (
     <div className="phone-dial-stage">
-      <DiskUiPrototype analyser={analyser} />
+      <DiskUiPrototype analyser={analyser} isPaused={isPaused} onOrbClick={onOrbClick} />
       {currentSong ? <DataDrawer song={currentSong} /> : null}
       <button
         type="button"

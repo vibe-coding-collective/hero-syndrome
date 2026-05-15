@@ -80,6 +80,8 @@ interface DiskUiPrototypeProps {
   /** AnalyserNode from the parent AudioEngine. When present and audio is
    *  playing, drives the Orb's reactive level. */
   analyser: AnalyserNode | null;
+  isPaused?: boolean;
+  onOrbClick?: () => void;
 }
 
 function normalizeDegrees(value: number): number {
@@ -334,15 +336,23 @@ function CenterOrb(props: {
   isMusicPlaying: boolean;
   musicLevel: number;
   seed: number;
+  isPaused?: boolean;
+  onClick?: () => void;
 }) {
   const orbState = props.isMusicPlaying ? 'talking' : null;
-  const orbKey = `${orbState ?? 'idle'}-${props.colors[0]}-${props.colors[1]}-${props.seed}`;
+  const orbKey = `${props.colors[0]}-${props.colors[1]}-${props.seed}`;
   const levelRef = useRef(props.musicLevel);
   levelRef.current = props.musicLevel;
 
   return (
-    <div className="phone-dial__orb-layer" aria-hidden>
-      <div className="phone-dial__orb-shell">
+    <div
+      className="phone-dial__orb-layer"
+      onClick={props.onClick}
+      style={props.onClick ? { pointerEvents: 'auto', cursor: 'pointer' } : undefined}
+      aria-label={props.isPaused ? 'Resume' : 'Pause'}
+      role={props.onClick ? 'button' : undefined}
+    >
+      <div className="phone-dial__orb-shell" style={{ position: 'relative', pointerEvents: 'none' }}>
         <Orb
           agentState={orbState}
           className="phone-dial__orb-canvas"
@@ -352,6 +362,21 @@ function CenterOrb(props: {
           seed={props.seed}
           volumeMode="manual"
         />
+        {props.isPaused && (
+          <img
+            src="/play.svg"
+            alt=""
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '48px',
+              height: '48px',
+              pointerEvents: 'none',
+            }}
+          />
+        )}
       </div>
     </div>
   );
@@ -537,13 +562,34 @@ function WaitingDial() {
   );
 }
 
-export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
+export default function DiskUiPrototype({ analyser, isPaused, onOrbClick }: DiskUiPrototypeProps) {
   const songs = useStore((state) => state.songs);
   const currentSongId = useStore((state) => state.currentSongId);
   const isPlaying = useStore((state) => state.isPlaying);
   const [progressClock, setProgressClock] = useState(() => performance.now());
   const [musicOrbLevel, setMusicOrbLevel] = useState(0);
   const [overlayActive, setOverlayActive] = useState(false);
+  // Track cumulative paused time so the progress ring freezes on pause.
+  const pauseOffsetMsRef = useRef(0);
+  const pausedSinceRef = useRef<number | null>(null);
+
+  // Reset pause offset when the song changes.
+  useEffect(() => {
+    pauseOffsetMsRef.current = 0;
+    pausedSinceRef.current = null;
+  }, [currentSongId]);
+
+  // Accumulate pause duration whenever isPaused flips.
+  useEffect(() => {
+    if (isPaused) {
+      pausedSinceRef.current = performance.now();
+    } else {
+      if (pausedSinceRef.current != null) {
+        pauseOffsetMsRef.current += performance.now() - pausedSinceRef.current;
+        pausedSinceRef.current = null;
+      }
+    }
+  }, [isPaused]);
 
   const currentSong = useMemo(
     () => (currentSongId ? songs.find((song) => song.songId === currentSongId) ?? null : null),
@@ -584,9 +630,11 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
   const activityTurn = useShortestDialTurn(selectedActivityId, activityOptionIds, 'activity');
 
   useEffect(() => {
-    const timer = window.setInterval(() => setProgressClock(performance.now()), 250);
+    const timer = window.setInterval(() => {
+      if (!isPaused) setProgressClock(performance.now());
+    }, 250);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [isPaused]);
 
   useEffect(() => {
     if (!analyser) {
@@ -637,7 +685,7 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
   const effectiveDurationSec = Math.max(1, currentSong ? currentSong.durationSec - AUDIO_RAMP_SEC : 0);
   const playbackProgress =
     currentSong?.startedAt != null && isPlaying
-      ? clamp01((progressClock - currentSong.startedAt) / (effectiveDurationSec * 1000))
+      ? clamp01((progressClock - currentSong.startedAt - pauseOffsetMsRef.current) / (effectiveDurationSec * 1000))
       : null;
   const musicProgressMode: MusicProgressMode = playbackProgress != null ? 'playback' : 'idle';
   const musicProgressValue = playbackProgress ?? 0;
@@ -699,6 +747,13 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
             <stop offset="0.85" stopColor="#ffffff" stopOpacity="0.32" />
             <stop offset="1" stopColor="#ffffff" stopOpacity="0.7" />
           </linearGradient>
+          {/* Clip horizon line to only the region outside the outer ring circle */}
+          <clipPath id="horizonLineClip" clipPathUnits="userSpaceOnUse">
+            <path
+              fillRule="evenodd"
+              d={`M0,0 H${FRAME.width} V${FRAME.height} H0 Z M${DIAL_CENTER.x - OUTER_RADIUS},${DIAL_CENTER.y} a${OUTER_RADIUS},${OUTER_RADIUS} 0 1,0 ${OUTER_RADIUS * 2},0 a${OUTER_RADIUS},${OUTER_RADIUS} 0 1,0 ${-OUTER_RADIUS * 2},0`}
+            />
+          </clipPath>
         </defs>
 
         <rect width={FRAME.width} height={FRAME.height} fill="url(#journeyBackground)" />
@@ -740,6 +795,14 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
           <image href={ASSETS.weatherCloud} height="46" width="86" x="153.5" y="54.25" />
         )}
 
+        <line
+          className="phone-dial__horizon-line"
+          clipPath="url(#horizonLineClip)"
+          x1={sunrisePoint.x}
+          x2={sunsetPoint.x}
+          y1={sunrisePoint.y}
+          y2={sunsetPoint.y}
+        />
         <image href={ASSETS.outerRing} height="379" width="379" x="8" y="236.5" />
         <MusicProgressRing
           mode={musicProgressMode}
@@ -753,13 +816,6 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
           cy={DIAL_CENTER.y}
           fill="none"
           r={SUN_ORBIT_RADIUS}
-        />
-        <line
-          className="phone-dial__horizon-line"
-          x1={sunrisePoint.x}
-          x2={sunsetPoint.x}
-          y1={sunrisePoint.y}
-          y2={sunsetPoint.y}
         />
         <g className="phone-dial__horizon-marker">
           <circle cx={sunrisePoint.x} cy={sunrisePoint.y} r="3" />
@@ -854,9 +910,11 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
       </svg>
       <CenterOrb
         colors={ORB_COLORS}
-        isMusicPlaying={isPlaying}
+        isMusicPlaying={isPlaying && !isPaused}
         musicLevel={musicOrbLevel}
         seed={model.bpm + (model.locationOptions[0]?.label.length ?? 0)}
+        isPaused={isPaused}
+        onClick={onOrbClick}
       />
       {overlayActive ? <SelectionOverlay model={model} /> : null}
     </section>

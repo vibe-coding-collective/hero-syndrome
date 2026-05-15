@@ -1,4 +1,5 @@
 import { ulid } from 'ulid';
+import type { StackedMeta, RenderPlan } from '@hero-syndrome/shared';
 import { api } from '../api/client';
 import { AudioEngine } from '../audio/engine';
 import { AudioFeatureExtractor } from '../audio/audioFeatures';
@@ -7,7 +8,7 @@ import { GeolocationSensor } from '../sensors/geolocation';
 import { MotionSensor } from '../sensors/motion';
 import { StateAggregator } from '../state/aggregator';
 import { SongSynthesizer } from '../state/songSynthesizer';
-import { useStore } from '../state/store';
+import { useStore, type PlayedSong } from '../state/store';
 
 export interface SceneRuntime {
   engine: AudioEngine;
@@ -129,6 +130,135 @@ export async function startScene(audioCtx?: AudioContext): Promise<SceneRuntime>
   };
   void scheduledFinalize;
   void measuredSampleStartedAt;
+
+  active = { engine, synthesizer, motion, geolocation, aggregator, features, detach, scheduleFinalize };
+  return active;
+}
+
+export async function startTestScene(audioCtx?: AudioContext): Promise<SceneRuntime> {
+  const sessionId = ulid();
+  const startedAt = Date.now();
+  useStore.getState().resetSession();
+  useStore.getState().setSession({ sessionId, startedAt });
+
+  const motion = new MotionSensor();
+  const motionGranted = await motion.requestPermission();
+  motion.start();
+  const geolocation = new GeolocationSensor();
+  geolocation.start();
+
+  let geoGranted = false;
+  if ('permissions' in navigator) {
+    try {
+      const status = await (navigator.permissions as Permissions).query({ name: 'geolocation' as PermissionName });
+      geoGranted = status.state === 'granted';
+    } catch { /* ignore */ }
+  }
+  if (!geoGranted) {
+    try {
+      await new Promise<void>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(() => resolve(), () => reject(), { enableHighAccuracy: false, timeout: 10_000 });
+      });
+      geoGranted = true;
+    } catch { /* user denied; degrade gracefully */ }
+  }
+  useStore.getState().setSensors({ permissionsGranted: { motion: motionGranted, geolocation: geoGranted } });
+
+  const engine = new AudioEngine({}, audioCtx);
+  const features = new AudioFeatureExtractor(engine.analyser);
+  const aggregator = new StateAggregator(motion, geolocation);
+  aggregator.start();
+
+  api.cosmicGlobal().then((cosmic) => useStore.getState().setSession({ cosmic })).catch(() => undefined);
+
+  // Destroyed immediately — test mode drives audio manually, no watchdog needed.
+  const synthesizer = new SongSynthesizer(engine);
+  synthesizer.destroy();
+
+  engine.setEvents({
+    onSongStart: (songId, startedAtMs, durationSec) => {
+      useStore.getState().setPlayback({ isPlaying: true, currentSongId: songId });
+      useStore.getState().setSongStarted(songId, startedAtMs, durationSec);
+      setMediaSessionMetadata({ title: 'Hero Syndrome — test scene' });
+      setMediaSessionPlaybackState('playing');
+      features.finish();
+      features.begin(durationSec);
+    },
+    onAllEnded: () => {
+      useStore.getState().setPlayback({ isPlaying: false });
+      setMediaSessionPlaybackState('paused');
+    },
+  });
+
+  const TEST_SONG_URL = '/test-song.mp3';
+
+  aggregator.firstLocationTick.then(async () => {
+    // Give weather/geocode enrichment a moment to land before snapshotting.
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 3000));
+    const sv = useStore.getState().stateVector;
+    const weatherCondition = sv?.weather?.condition ?? 'clear';
+    const timePhase = sv?.time.phase ?? 'afternoon';
+    const dayOfWeek = sv?.time.dayOfWeek ?? 'Monday';
+    const bodyActivity = sv?.location?.bodyActivity;
+
+    const stacked: StackedMeta = {
+      energy: { motion: 0.3, density: 0.4, tension: 0.2, brightness: 0.5 },
+      mood: { calm: 0.7, reflective: 0.5, melancholic: 0.3 },
+      inspiration: { world: 'kyoto dusk rain', textureKeys: ['rain', 'urban', 'dusk'] },
+      tideEffective: 0.5,
+      weatherCondition,
+      timePhase,
+      moonPhase: 'full',
+    };
+    const renderPlan: RenderPlan = {
+      meta: stacked,
+      bpm: 95,
+      totalDurationMs: 240_000,
+      seed: ulid(),
+      dayOfWeek,
+      ...(bodyActivity ? { bodyActivity } : {}),
+      locationType: sv?.location ? 'home_interior' : undefined,
+    };
+    const songId = `test-${ulid()}`;
+    const played: PlayedSong = {
+      songId,
+      songUrl: TEST_SONG_URL,
+      metadata: {
+        bpmRange: [90, 100],
+        key: 'D minor',
+        intensity: 0.4,
+        instrumentation: ['piano', 'strings', 'rain ambience'],
+        genreTags: ['ambient', 'neo-classical'],
+        transitionIntent: 'continue',
+      },
+      composition: {
+        overallPrompt: 'Kyoto Dusk Rain — test track',
+        sections: [{ label: 'main', durationSec: 240, prompt: 'ambient kyoto dusk rain' }],
+      },
+      durationSec: 240,
+      source: 'generated',
+      stateVector: sv ?? undefined,
+      stacked,
+      renderPlan,
+      locationType: sv?.location ? 'home_interior' : undefined,
+    };
+
+    useStore.getState().appendSong(played);
+    try {
+      await engine.enqueue(TEST_SONG_URL, songId);
+    } catch (err) {
+      console.error('[test] enqueue failed', err);
+    }
+  }).catch(() => undefined);
+
+  const scheduleFinalize = (): void => {};
+  const detach = (): void => {
+    aggregator.stop();
+    motion.stop();
+    geolocation.stop();
+    engine.stop();
+    features.finish();
+  };
 
   active = { engine, synthesizer, motion, geolocation, aggregator, features, detach, scheduleFinalize };
   return active;

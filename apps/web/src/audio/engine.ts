@@ -339,6 +339,18 @@ export class AudioEngine {
     this.cancelTailLoop();
   }
 
+  pauseAudio(): void {
+    const t = this.ctx.currentTime;
+    this.master.gain.cancelScheduledValues(t);
+    this.master.gain.setTargetAtTime(0, t, 0.08);
+  }
+
+  resumeAudio(): void {
+    const t = this.ctx.currentTime;
+    this.master.gain.cancelScheduledValues(t);
+    this.master.gain.setTargetAtTime(1, t, 0.08);
+  }
+
   fadeOut(durationMs = 2000): Promise<void> {
     return new Promise((resolve) => {
       const t = this.ctx.currentTime;
