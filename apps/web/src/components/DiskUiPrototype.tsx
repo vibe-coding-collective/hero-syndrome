@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { MoonPhase } from '@hero-syndrome/shared';
 import { AUDIO_RAMP_SEC } from '../audio/engine';
 import { useStore } from '../state/store';
@@ -42,15 +42,16 @@ const DIAL_CENTER = { x: 197, y: 426 };
 const CENTER_ORB_SIZE = 111;
 const ORB_BEZEL_INNER_RADIUS = CENTER_ORB_SIZE / 2 - 1.5;
 const ORB_BEZEL_OUTER_RADIUS = 80.5;
-const SUN_ORBIT_RADIUS = 147;
+const SUN_ORBIT_RADIUS = 137;
 const OUTER_RADIUS = 181;
 const MUSIC_PROGRESS_RADIUS = OUTER_RADIUS - 6;
+const STATE_LABEL_TRAIL_DEGREES = 38;
 const TOP_MATERIAL_LABEL_RADIUS = 66;
 const BOTTOM_MATERIAL_LABEL_RADIUS = 66;
 const LOCATION_LABEL_RADIUS = 119;
-const BUTTON_INNER_RADIUS = 72;
-const BUTTON_OUTER_RADIUS = 96;
-const BUTTON_TEXT_RADIUS = 84;
+const BUTTON_INNER_RADIUS = 75;
+const BUTTON_OUTER_RADIUS = 101;
+const BUTTON_TEXT_RADIUS = 88;
 const BUTTON_ARC_SPAN = 92;
 const SELECTION_CONTROL_RING_SIZE = 213;
 const SELECTION_POINTER = { width: 85.336, height: 111.5 };
@@ -63,6 +64,13 @@ const OVERLAY_DURATION_MS = 2500;
 const TRANSITION_LEAD_MS = 2500;
 
 type MusicProgressMode = 'idle' | 'loading' | 'playback';
+
+type DialTurnStyle = CSSProperties & { '--dial-turn-from': string };
+
+interface DialTurnAnimation {
+  key: string;
+  style: DialTurnStyle;
+}
 
 interface DiskUiPrototypeProps {
   /** AnalyserNode from the parent AudioEngine. When present and audio is
@@ -77,6 +85,91 @@ function normalizeDegrees(value: number): number {
 function clamp01(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.min(1, Math.max(0, value));
+}
+
+function uniqueIds(ids: string[]): string[] {
+  return Array.from(new Set(ids.filter(Boolean)));
+}
+
+function modulo(value: number, divisor: number): number {
+  return ((value % divisor) + divisor) % divisor;
+}
+
+function shortestIndexDelta(fromIndex: number, toIndex: number, count: number): number {
+  const raw = toIndex - fromIndex;
+  const half = count / 2;
+  const normalized = modulo(raw + half, count) - half;
+  if (count % 2 === 0 && Math.abs(normalized) === half) {
+    return (Math.random() < 0.5 ? -1 : 1) * half;
+  }
+  return normalized;
+}
+
+function turnFromPreviousSelection(
+  previousSelectedId: string,
+  selectedId: string,
+  previousOptionIds: string[],
+  currentOptionIds: string[],
+): number {
+  const candidateSets = [
+    uniqueIds(currentOptionIds),
+    uniqueIds(previousOptionIds),
+    uniqueIds([...previousOptionIds, ...currentOptionIds]),
+  ];
+
+  for (const ids of candidateSets) {
+    if (ids.length < 2) continue;
+    const previousIndex = ids.indexOf(previousSelectedId);
+    const selectedIndex = ids.indexOf(selectedId);
+    if (previousIndex === -1 || selectedIndex === -1) continue;
+    const delta = shortestIndexDelta(previousIndex, selectedIndex, ids.length);
+    if (delta === 0) return 0;
+    const step = 360 / ids.length;
+    const magnitude = Math.min(150, Math.max(24, Math.abs(delta) * step));
+    return delta > 0 ? magnitude : -magnitude;
+  }
+
+  return (Math.random() < 0.5 ? -1 : 1) * 42;
+}
+
+function useShortestDialTurn(
+  selectedId: string | null,
+  optionIds: string[],
+  scope: string,
+): DialTurnAnimation {
+  const previousRef = useRef<{ selectedId: string | null; optionIds: string[] }>({
+    selectedId: null,
+    optionIds: [],
+  });
+  const sequenceRef = useRef(0);
+  const [turn, setTurn] = useState<{ key: string; fromDegrees: number }>(() => ({
+    key: `${scope}-initial`,
+    fromDegrees: 0,
+  }));
+  const optionSignature = optionIds.join('|');
+
+  useLayoutEffect(() => {
+    const previous = previousRef.current;
+    if (selectedId && previous.selectedId && previous.selectedId !== selectedId) {
+      const fromDegrees = turnFromPreviousSelection(
+        previous.selectedId,
+        selectedId,
+        previous.optionIds,
+        optionIds,
+      );
+      sequenceRef.current += 1;
+      setTurn({
+        key: `${scope}-${sequenceRef.current}`,
+        fromDegrees,
+      });
+    }
+    previousRef.current = { selectedId, optionIds };
+  }, [optionSignature, optionIds, scope, selectedId]);
+
+  return {
+    key: turn.key,
+    style: { '--dial-turn-from': `${turn.fromDegrees.toFixed(3)}deg` },
+  };
 }
 
 function hourToAngle(hour: number): number {
@@ -105,6 +198,11 @@ function bottomArcPath(radius: number, midAngle: number, span = 20): string {
   const start = pointOnOrbit(midAngle + span / 2, radius);
   const end = pointOnOrbit(midAngle - span / 2, radius);
   return `M ${start.x.toFixed(3)} ${start.y.toFixed(3)} A ${radius} ${radius} 0 0 0 ${end.x.toFixed(3)} ${end.y.toFixed(3)}`;
+}
+
+function readableArcPath(radius: number, midAngle: number, span = 20): string {
+  const angle = normalizeDegrees(midAngle);
+  return angle > 90 && angle < 270 ? bottomArcPath(radius, midAngle, span) : arcPath(radius, midAngle, span);
 }
 
 function annularRingPath(innerRadius: number, outerRadius: number, startAngle = 0): string {
@@ -321,7 +419,13 @@ function SunIndicator(props: { x: number; y: number }) {
  *  song boundary. No pointer handlers — the wheel rotates from a full
  *  revolution back to 0 via CSS keyframes, landing on the song's top-scored
  *  option (always at index 0 in the option list). */
-function SelectionOverlay({ model }: { model: DialViewModel }) {
+function SelectionOverlay({
+  model,
+  turn,
+}: {
+  model: DialViewModel;
+  turn: DialTurnAnimation;
+}) {
   // Build the wheel from location options, falling back to activity options,
   // then to a single coords/phase placeholder so the overlay always renders
   // something — never null. (When location data is missing for the whole
@@ -367,7 +471,7 @@ function SelectionOverlay({ model }: { model: DialViewModel }) {
           y={DIAL_CENTER.y - 41.5}
         />
 
-        <g className="phone-dial__location-list">
+        <g className="phone-dial__location-list" key={turn.key} style={turn.style}>
           {wheelOptions.map((option, index) => {
             const angle = index * step;
             const pathId = `location-option-${index}`;
@@ -465,6 +569,18 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
     [displayedSong],
   );
   const modelSongId = model?.songId ?? null;
+  const locationOptionIds = useMemo(
+    () => model?.locationOptions.map((option) => option.id) ?? [],
+    [model],
+  );
+  const activityOptionIds = useMemo(
+    () => model?.activityOptions.map((option) => option.id) ?? [],
+    [model],
+  );
+  const selectedLocationId = model?.locationOptions[0]?.id ?? (model?.coordsLabel ? `coords:${model.coordsLabel}` : null);
+  const selectedActivityId = model?.activityOptions[0]?.id ?? null;
+  const locationTurn = useShortestDialTurn(selectedLocationId, locationOptionIds, 'location');
+  const activityTurn = useShortestDialTurn(selectedActivityId, activityOptionIds, 'activity');
 
   useEffect(() => {
     const timer = window.setInterval(() => setProgressClock(performance.now()), 250);
@@ -526,6 +642,7 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
   const musicProgressValue = playbackProgress ?? 0;
 
   const hourAngle = hourToAngle(model.hour);
+  const stateTextAngle = normalizeDegrees(hourAngle - STATE_LABEL_TRAIL_DEGREES);
   const sunPoint = pointOnOrbit(hourAngle, SUN_ORBIT_RADIUS);
   const sunrisePoint = pointOnOrbit(hourToAngle(model.sunriseHour), SUN_ORBIT_RADIUS);
   const sunsetPoint = pointOnOrbit(hourToAngle(model.sunsetHour), SUN_ORBIT_RADIUS);
@@ -560,6 +677,7 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
             <stop offset="0.52" stopColor={model.isNight ? '#22254a' : '#c7d8e3'} />
             <stop offset="1" stopColor={model.isNight ? '#060918' : '#FFFFFF'} />
           </linearGradient>
+          <path id="stateTextArc" d={readableArcPath(SUN_ORBIT_RADIUS, stateTextAngle, 62)} />
           <path id="topSelectionArc" d={arcPath(BUTTON_TEXT_RADIUS, 0, BUTTON_ARC_SPAN - 8)} />
           <path id="topMaterialArc" d={arcPath(TOP_MATERIAL_LABEL_RADIUS, 0, 82)} />
           <path id="bottomMaterialArc" d={bottomArcPath(BOTTOM_MATERIAL_LABEL_RADIUS, 180, 82)} />
@@ -661,7 +779,9 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
 
         <g
           aria-label={`Place: ${topButtonLabel}`}
-          className="phone-dial__arc-button phone-dial__arc-button--readonly"
+          className="phone-dial__arc-button phone-dial__arc-button--readonly phone-dial__arc-button--turning"
+          key={locationTurn.key}
+          style={locationTurn.style}
         >
           <path
             className="phone-dial__button-arc-fill"
@@ -691,7 +811,9 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
 
         <g
           aria-label={`Activity: ${bottomButtonLabel}`}
-          className="phone-dial__arc-button phone-dial__arc-button--readonly"
+          className="phone-dial__arc-button phone-dial__arc-button--readonly phone-dial__arc-button--turning"
+          key={activityTurn.key}
+          style={activityTurn.style}
         >
           <path
             className="phone-dial__button-arc-fill"
@@ -716,7 +838,7 @@ export default function DiskUiPrototype({ analyser }: DiskUiPrototypeProps) {
         musicLevel={musicOrbLevel}
         seed={model.bpm + (model.locationOptions[0]?.label.length ?? 0)}
       />
-      {overlayActive ? <SelectionOverlay model={model} /> : null}
+      {overlayActive ? <SelectionOverlay model={model} turn={locationTurn} /> : null}
     </section>
   );
 }

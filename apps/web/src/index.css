@@ -50,6 +50,381 @@
     touch-action: none;
   }
 
+  .phone-dial-sandbox__panel {
+    position: fixed;
+    left: calc(1rem + env(safe-area-inset-left));
+    top: calc(1rem + env(safe-area-inset-top));
+    z-index: 40;
+    width: min(360px, calc(100vw - 2rem));
+    border-radius: 8px;
+    border: 1px solid rgba(244, 239, 227, 0.3);
+    background: rgba(10, 13, 24, 0.74);
+    box-shadow: 0 18px 46px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(18px) saturate(0.88);
+    color: rgba(244, 239, 227, 0.92);
+    font-family: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
+    font-weight: 400;
+    letter-spacing: 0.05em;
+    touch-action: manipulation;
+  }
+
+  .phone-dial-sandbox__panel summary {
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    cursor: pointer;
+    font-size: 11px;
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.05em;
+    list-style: none;
+  }
+
+  .phone-dial-sandbox__panel summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .phone-dial-sandbox__body {
+    display: grid;
+    gap: 12px;
+    padding: 0 14px 14px;
+  }
+
+  .phone-dial-sandbox__presets,
+  .phone-dial-sandbox__actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .phone-dial-sandbox__actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .phone-dial-sandbox__presets button,
+  .phone-dial-sandbox__actions button {
+    min-height: 34px;
+    border-radius: 6px;
+    border: 1px solid rgba(244, 239, 227, 0.28);
+    background: rgba(244, 239, 227, 0.08);
+    color: rgba(244, 239, 227, 0.88);
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 400;
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+  }
+
+  .phone-dial-sandbox__presets button:hover,
+  .phone-dial-sandbox__actions button:hover {
+    background: rgba(244, 239, 227, 0.15);
+  }
+
+  .phone-dial-sandbox__presets button:active,
+  .phone-dial-sandbox__actions button:active {
+    transform: translateY(1px);
+  }
+
+  .phone-dial-sandbox__presets button.is-active {
+    border-color: rgba(244, 239, 227, 0.68);
+    background: rgba(244, 239, 227, 0.22);
+  }
+
+  .phone-dial-sandbox__range {
+    display: grid;
+    grid-template-columns: 46px minmax(0, 1fr) 44px;
+    align-items: center;
+    gap: 10px;
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .phone-dial-sandbox__range strong {
+    font-weight: 400;
+    text-align: right;
+  }
+
+  .phone-dial-sandbox__range input {
+    width: 100%;
+    accent-color: #f4efe3;
+  }
+
+  .phone-data-drawer {
+    position: fixed;
+    left: 50%;
+    bottom: calc(22px + env(safe-area-inset-bottom));
+    z-index: 34;
+    width: min(calc(100vw - 32px), calc(100dvh * 393 / 852 - 32px));
+    height: 132px;
+    min-height: 0;
+    color: rgba(248, 247, 242, 0.94);
+    font-family: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
+    font-weight: 400;
+    letter-spacing: 0.035em;
+    border: 1px solid rgba(255, 255, 255, 0.34);
+    border-radius: 24px;
+    background:
+      linear-gradient(145deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.16) 42%, rgba(230, 237, 242, 0.1)),
+      rgba(211, 220, 226, 0.28);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.42),
+      inset 0 -24px 52px rgba(255, 255, 255, 0.08),
+      0 18px 58px rgba(2, 5, 16, 0.28);
+    backdrop-filter: blur(30px) saturate(1.2) brightness(1.08);
+    -webkit-backdrop-filter: blur(30px) saturate(1.2) brightness(1.08);
+    overflow: hidden;
+    touch-action: pan-y;
+    transform: translate(-50%, var(--drawer-drag-y, 0px));
+    transition:
+      transform 740ms cubic-bezier(0.16, 1, 0.22, 1),
+      width 740ms cubic-bezier(0.16, 1, 0.22, 1),
+      height 740ms cubic-bezier(0.16, 1, 0.22, 1),
+      bottom 740ms cubic-bezier(0.16, 1, 0.22, 1),
+      border-radius 740ms cubic-bezier(0.16, 1, 0.22, 1),
+      background 740ms cubic-bezier(0.16, 1, 0.22, 1),
+      box-shadow 740ms cubic-bezier(0.16, 1, 0.22, 1);
+    will-change: transform;
+  }
+
+  .phone-data-drawer--open {
+    bottom: 0;
+    width: min(100vw, calc(100dvh * 393 / 852));
+    height: min(74dvh, 650px);
+    min-height: 470px;
+    border-bottom: 0;
+    border-radius: 26px 26px 0 0;
+    background:
+      linear-gradient(145deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.12) 38%, rgba(18, 20, 30, 0.48)),
+      rgba(48, 52, 62, 0.46);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.34),
+      inset 0 -36px 72px rgba(0, 0, 0, 0.22),
+      0 -34px 90px rgba(2, 5, 16, 0.46);
+    transform: translate(-50%, var(--drawer-drag-y, 0px));
+  }
+
+  .phone-data-drawer--dragging {
+    transition: none;
+  }
+
+  .phone-data-drawer__handle {
+    width: 100%;
+    height: 104px;
+    display: grid;
+    grid-template-rows: 22px 1fr;
+    gap: 2px;
+    align-items: start;
+    padding: 11px 18px 14px;
+    border: 0;
+    background:
+      radial-gradient(circle at 48% 0%, rgba(255, 255, 255, 0.36), transparent 42%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04));
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    touch-action: none;
+    cursor: grab;
+  }
+
+  .phone-data-drawer__handle:focus {
+    outline: none;
+  }
+
+  .phone-data-drawer__handle:focus-visible {
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.32);
+  }
+
+  .phone-data-drawer__handle:active {
+    cursor: grabbing;
+  }
+
+  .phone-data-drawer__grab {
+    justify-self: center;
+    width: 54px;
+    height: 5px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.58);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.5),
+      0 1px 8px rgba(0, 0, 0, 0.18);
+  }
+
+  .phone-data-drawer__peek {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 18px;
+    min-width: 0;
+  }
+
+  .phone-data-drawer__peek strong,
+  .phone-data-drawer__hero h2 {
+    display: block;
+    margin: 0;
+    color: rgba(255, 255, 255, 0.96);
+    font-size: 12.5px;
+    font-weight: 400;
+    line-height: 1.12;
+    text-transform: uppercase;
+  }
+
+  .phone-data-drawer__eyebrow,
+  .phone-data-drawer__hint,
+  .phone-data-drawer__hero p,
+  .phone-data-drawer__section h3,
+  .phone-data-drawer__row span,
+  .phone-data-drawer__composition-card span {
+    color: rgba(255, 255, 255, 0.64);
+    font-size: 9px;
+    font-weight: 400;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+
+  .phone-data-drawer__eyebrow {
+    display: block;
+    margin-bottom: 5px;
+  }
+
+  .phone-data-drawer__hint {
+    flex: 0 0 auto;
+    padding-bottom: 1px;
+  }
+
+  .phone-data-drawer__content {
+    height: calc(100% - 104px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 4px 18px calc(22px + env(safe-area-inset-bottom));
+    scrollbar-width: none;
+    touch-action: pan-y;
+  }
+
+  .phone-data-drawer--closed .phone-data-drawer__content {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 180ms ease;
+  }
+
+  .phone-data-drawer--open .phone-data-drawer__content {
+    opacity: 1;
+    transition: opacity 260ms ease 120ms;
+  }
+
+  .phone-data-drawer__content::-webkit-scrollbar {
+    display: none;
+  }
+
+  .phone-data-drawer__hero {
+    display: grid;
+    gap: 10px;
+    padding: 14px 0 18px;
+  }
+
+  .phone-data-drawer__hero h2 {
+    max-width: 18rem;
+    font-size: 19px;
+    line-height: 1.08;
+  }
+
+  .phone-data-drawer__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .phone-data-drawer__chips span {
+    min-height: 28px;
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.08);
+    padding: 0 11px;
+    color: rgba(255, 255, 255, 0.84);
+    font-size: 10px;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .phone-data-drawer__section {
+    display: grid;
+    gap: 10px;
+    padding: 15px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  .phone-data-drawer__section h3 {
+    margin: 0;
+  }
+
+  .phone-data-drawer__rows {
+    display: grid;
+    gap: 7px;
+  }
+
+  .phone-data-drawer__row {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    min-height: 37px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.085);
+    padding: 8px 10px;
+  }
+
+  .phone-data-drawer__row strong {
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 10.5px;
+    font-weight: 400;
+    line-height: 1.25;
+    text-transform: uppercase;
+  }
+
+  .phone-data-drawer__prompt {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 12px;
+    line-height: 1.35;
+    letter-spacing: 0.025em;
+  }
+
+  .phone-data-drawer__sections {
+    display: grid;
+    gap: 9px;
+  }
+
+  .phone-data-drawer__composition-card {
+    display: grid;
+    gap: 6px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background:
+      linear-gradient(160deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04)),
+      rgba(255, 255, 255, 0.045);
+    padding: 11px 12px;
+  }
+
+  .phone-data-drawer__composition-card strong {
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 13px;
+    font-weight: 400;
+    text-transform: uppercase;
+  }
+
+  .phone-data-drawer__composition-card p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.74);
+    font-size: 11px;
+    line-height: 1.34;
+    letter-spacing: 0.025em;
+  }
+
   .phone-dial-end-pill {
     position: fixed;
     top: calc(1rem + env(safe-area-inset-top));
@@ -61,10 +436,11 @@
     background: rgba(12, 13, 25, 0.6);
     backdrop-filter: blur(10px);
     color: rgba(244, 239, 227, 0.94);
-    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-family: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
     font-size: 11px;
+    font-weight: 400;
     font-variant-caps: all-small-caps;
-    letter-spacing: 0.18em;
+    letter-spacing: 0.05em;
     cursor: pointer;
     touch-action: manipulation;
     transition: background 220ms ease, transform 220ms ease;
@@ -89,6 +465,9 @@
     overflow: hidden;
     background: #90b5d0;
     box-shadow: 0 28px 80px rgba(0, 0, 0, 0.36);
+    font-family: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
+    font-weight: 400;
+    letter-spacing: 0.05em;
     touch-action: none;
     user-select: none;
     /* --light-level (0..1) is set from JS via inline style on this section.
@@ -130,10 +509,11 @@
 
   .phone-dial__waiting-label {
     color: rgba(244, 239, 227, 0.66);
-    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-family: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
     font-size: 11px;
+    font-weight: 400;
     font-variant-caps: all-small-caps;
-    letter-spacing: 0.18em;
+    letter-spacing: 0.05em;
   }
 
   .phone-dial__artboard {
@@ -161,6 +541,20 @@
     transition: transform 1.4s cubic-bezier(0.2, 0.6, 0.2, 1);
   }
 
+  .phone-dial__state-label {
+    fill: #11161f;
+    font-family: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0.05em;
+    dominant-baseline: middle;
+    pointer-events: none;
+  }
+
+  .phone-dial__artboard--night .phone-dial__state-label {
+    fill: rgba(238, 239, 255, 0.92);
+  }
+
   .phone-dial__sun-orbit {
     opacity: 0.42;
     stroke: #fff;
@@ -178,10 +572,10 @@
 
   .phone-dial__horizon-marker {
     fill: rgba(255, 255, 255, 0.78);
-    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    font-family: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
     font-size: 8px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
+    font-weight: 400;
+    letter-spacing: 0.05em;
     pointer-events: none;
   }
 
@@ -311,10 +705,10 @@
 
   .phone-dial__selection-label {
     fill: rgba(255, 255, 255, 0.88);
-    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    font-family: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
     font-size: 8.9px;
-    font-weight: 500;
-    letter-spacing: 0.7px;
+    font-weight: 400;
+    letter-spacing: 0.05em;
     dominant-baseline: middle;
   }
 
@@ -323,31 +717,42 @@
     pointer-events: none;
   }
 
+  .phone-dial__arc-button--turning {
+    transform-box: view-box;
+    transform-origin: 197px 426px;
+    animation: phone-dial-indicator-turn 680ms cubic-bezier(0.2, 0.72, 0.18, 1) both;
+  }
+
   .phone-dial__arc-button text {
     pointer-events: none;
   }
 
   .phone-dial__button-arc-fill {
-    fill: rgba(32, 0, 0, 0.4);
+    fill: rgb(32 0 0 / 40%);
   }
 
   .phone-dial__material-label {
     fill: #050506;
-    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-    font-size: 12.2px;
-    font-weight: 500;
-    letter-spacing: 0.65px;
+    font-family: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
+    font-size: 13.6px;
+    font-weight: 400;
+    letter-spacing: 0.05em;
     dominant-baseline: middle;
     text-anchor: middle;
     pointer-events: none;
   }
 
+  .phone-dial__material-label--bottom {
+    font-size: 12.2px;
+    letter-spacing: 0.05em;
+  }
+
   .phone-dial__run-label {
     fill: rgba(255, 255, 255, 0.9);
-    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    font-family: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
     font-size: 8.9px;
-    font-weight: 500;
-    letter-spacing: 0.7px;
+    font-weight: 400;
+    letter-spacing: 0.05em;
     dominant-baseline: middle;
     text-anchor: middle;
   }
@@ -415,10 +820,10 @@
 
   .phone-dial__data-readouts {
     fill: rgba(17, 22, 31, 0.72);
-    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    font-family: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
     font-size: 8.5px;
-    font-weight: 650;
-    letter-spacing: 0.08em;
+    font-weight: 400;
+    letter-spacing: 0.05em;
     pointer-events: none;
   }
 
@@ -454,15 +859,15 @@
   .phone-dial__location-list {
     transform-box: view-box;
     transform-origin: 197px 426px;
-    animation: phone-dial-wheel-spin 2.2s cubic-bezier(0.2, 0.6, 0.2, 1) both;
+    animation: phone-dial-wheel-turn 1.72s cubic-bezier(0.18, 0.82, 0.2, 1) both;
   }
 
   .phone-dial__location-list text {
     fill: rgba(0, 0, 0, 0.82);
-    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    font-family: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
     font-size: 9.6px;
-    font-weight: 500;
-    letter-spacing: 0.75px;
+    font-weight: 400;
+    letter-spacing: 0.05em;
   }
 
   .phone-dial__location-list .is-selected .phone-dial__location-option-label {
@@ -472,8 +877,8 @@
   .phone-dial__location-separator {
     fill: rgba(0, 0, 0, 0.62);
     font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0;
+    font-weight: 400;
+    letter-spacing: 0.05em;
   }
 
   .phone-dial__location-confirm image,
@@ -483,10 +888,10 @@
 
   .phone-dial__location-selected {
     fill: rgba(255, 255, 255, 0.92);
-    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    font-family: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
     font-size: 10.2px;
-    font-weight: 650;
-    letter-spacing: 0.75px;
+    font-weight: 400;
+    letter-spacing: 0.05em;
     text-anchor: middle;
   }
 
@@ -512,9 +917,18 @@
     }
   }
 
-  @keyframes phone-dial-wheel-spin {
+  @keyframes phone-dial-indicator-turn {
     from {
-      transform: rotate(-360deg);
+      transform: rotate(var(--dial-turn-from, 0deg));
+    }
+    to {
+      transform: rotate(0deg);
+    }
+  }
+
+  @keyframes phone-dial-wheel-turn {
+    from {
+      transform: rotate(var(--dial-turn-from, 0deg));
     }
     to {
       transform: rotate(0deg);
