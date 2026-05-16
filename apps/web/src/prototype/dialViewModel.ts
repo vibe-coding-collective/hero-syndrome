@@ -115,7 +115,7 @@ const LOCATION_TYPE_LABELS: Partial<Record<LocationType, string>> = {
   school_or_university: 'SCHOOL',
   hospital_or_clinic: 'CLINIC',
   government_building: 'CIVIC',
-  place_of_worship: 'TEMPLE',
+  place_of_worship: 'CHURCH',
   historic_site: 'HISTORIC',
   rural_settlement: 'RURAL',
   wilderness_or_remote: 'REMOTE',

@@ -3,7 +3,7 @@ import { Navigate, useNavigate, useLocation } from 'react-router-dom';
 import DataDrawer from '../components/DataDrawer';
 import DiskUiPrototype from '../components/DiskUiPrototype';
 import { useStore } from '../state/store';
-import { startScene, startTestScene, clearActiveRuntime, getActiveRuntime } from '../session/start';
+import { startScene, startTestScene, startChurchScene, clearActiveRuntime, getActiveRuntime } from '../session/start';
 import { consumeUnlockedContext, peekUnlockedContext } from '../audio/engine';
 import { endScene } from '../session/end';
 import { IdleWatcher } from '../session/idle';
@@ -13,7 +13,9 @@ type Stage = 'starting' | 'live' | 'ending';
 export default function Scene() {
   const navigate = useNavigate();
   const location = useLocation();
-  const testMode = (location.state as { testMode?: boolean } | null)?.testMode === true;
+  const locationState = location.state as { testMode?: boolean; churchMode?: boolean } | null;
+  const testMode = locationState?.testMode === true;
+  const churchMode = locationState?.churchMode === true;
   // Capture the stash presence once at first render via useState's lazy
   // initializer. Don't re-peek on subsequent renders: the start effect
   // consumes the stash, so a re-peek after state changes would see null and
@@ -51,7 +53,7 @@ export default function Scene() {
     startedRef.current = true;
     void (async () => {
       try {
-        const runtime = await (testMode ? startTestScene(ctx) : startScene(ctx));
+        const runtime = await (churchMode ? startChurchScene(ctx) : testMode ? startTestScene(ctx) : startScene(ctx));
         setAnalyser(runtime.engine.analyser);
         setStage('live');
         const watcher = new IdleWatcher(() => {

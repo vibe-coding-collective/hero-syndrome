@@ -19,6 +19,12 @@ export default function Hero() {
     navigate('/scene', { state: { testMode: true } })
   }
 
+  const onChurch = (): void => {
+    const ctx = AudioEngine.unlockedContext()
+    stashUnlockedContext(ctx)
+    navigate('/scene', { state: { churchMode: true } })
+  }
+
   return (
     <section className="border-b border-ink/15">
       <div className="mx-auto max-w-7xl px-6 md:px-12 pt-20 md:pt-32 pb-20 md:pb-28">
@@ -59,6 +65,19 @@ export default function Hero() {
             className="group inline-flex items-baseline gap-3 px-7 py-4 border border-ink/30 text-ink/60 font-serif text-[20px] md:text-[22px] hover:bg-ink/5 transition-colors duration-300"
           >
             Test
+            <span
+              aria-hidden
+              className="transition-transform duration-300 group-hover:translate-x-1"
+            >
+              →
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={onChurch}
+            className="group inline-flex items-baseline gap-3 px-7 py-4 border border-ink/30 text-ink/60 font-serif text-[20px] md:text-[22px] hover:bg-ink/5 transition-colors duration-300"
+          >
+            Church
             <span
               aria-hidden
               className="transition-transform duration-300 group-hover:translate-x-1"
