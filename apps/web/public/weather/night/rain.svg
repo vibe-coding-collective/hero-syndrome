@@ -1,0 +1,85 @@
+<svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 39C9.73613 41.5 6.56671 46.5 12 46.5C17.4333 46.5 14.2639 41.5 12 39Z" fill="url(#paint0_linear_520_489)"/>
+<path d="M48 39C45.7361 41.5 42.5667 46.5 48 46.5C53.4333 46.5 50.2639 41.5 48 39Z" fill="url(#paint1_linear_520_489)"/>
+<path d="M39 48C36.7361 50.5 33.5667 55.5 39 55.5C44.4333 55.5 41.2639 50.5 39 48Z" fill="url(#paint2_linear_520_489)"/>
+<path d="M21 48C18.7361 50.5 15.5667 55.5 21 55.5C26.4333 55.5 23.2639 50.5 21 48Z" fill="url(#paint3_linear_520_489)"/>
+<path d="M30 39C27.7361 41.5 24.5667 46.5 30 46.5C35.4333 46.5 32.2639 41.5 30 39Z" fill="url(#paint4_linear_520_489)"/>
+<path d="M21 41C19.8681 42.5 18.2834 45.5 21 45.5C23.7166 45.5 22.1319 42.5 21 41Z" fill="url(#paint5_linear_520_489)"/>
+<path d="M30 50C28.8681 51.5 27.2834 54.5 30 54.5C32.7166 54.5 31.1319 51.5 30 50Z" fill="url(#paint6_linear_520_489)"/>
+<path d="M48 50C46.8681 51.5 45.2834 54.5 48 54.5C50.7166 54.5 49.1319 51.5 48 50Z" fill="url(#paint7_linear_520_489)"/>
+<path d="M12 50C10.8681 51.5 9.28336 54.5 12 54.5C14.7166 54.5 13.1319 51.5 12 50Z" fill="url(#paint8_linear_520_489)"/>
+<path d="M39 41C37.8681 42.5 36.2834 45.5 39 45.5C41.7166 45.5 40.1319 42.5 39 41Z" fill="url(#paint9_linear_520_489)"/>
+<path d="M47.2902 33.834C33.9461 33.834 15.874 34.9181 10.1581 33.834C4.44222 32.7498 1.84178 26.2117 3.75408 21.4057C5.3429 17.4126 10.5869 14.7949 14.7996 15.8481C14.7996 7.72537 23.5022 7.14518 26.9836 10.0462C32.205 -0.977463 47.2902 4.82442 47.2902 13.5273C59.474 13.5273 60.6343 33.834 47.2902 33.834Z" fill="url(#paint10_linear_520_489)"/>
+<g filter="url(#filter0_n_520_489)">
+<path d="M47.3413 34.3158C33.9577 34.3158 15.8321 34.9181 10.0993 33.834C4.36651 32.7498 1.75837 26.2117 3.67632 21.4057C5.26985 17.4126 10.5294 14.7949 14.7545 15.8481C14.7545 7.72537 23.4829 7.14518 26.9746 10.0462C32.2115 -0.977462 47.3413 4.82443 47.3413 13.5273C59.561 13.5273 60.7248 34.3158 47.3413 34.3158Z" fill="url(#paint11_linear_520_489)"/>
+</g>
+<defs>
+<filter id="filter0_n_520_489" x="3.05273" y="4" width="53.8945" height="30.4826" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feTurbulence type="fractalNoise" baseFrequency="2 2" stitchTiles="stitch" numOctaves="3" result="noise" seed="6437" />
+<feComponentTransfer in="noise" result="coloredNoise1">
+<feFuncR type="linear" slope="2" intercept="-0.5" />
+<feFuncG type="linear" slope="2" intercept="-0.5" />
+<feFuncB type="linear" slope="2" intercept="-0.5" />
+<feFuncA type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "/>
+</feComponentTransfer>
+<feComposite operator="in" in2="shape" in="coloredNoise1" result="noise1Clipped" />
+<feComponentTransfer in="noise1Clipped" result="color1">
+<feFuncA type="table" tableValues="0 0.15" />
+</feComponentTransfer>
+<feMerge result="effect1_noise_520_489">
+<feMergeNode in="shape" />
+<feMergeNode in="color1" />
+</feMerge>
+</filter>
+<linearGradient id="paint0_linear_520_489" x1="12.0671" y1="39" x2="12.0671" y2="46.3808" gradientUnits="userSpaceOnUse">
+<stop stop-color="#7F88B4" stop-opacity="0.99"/>
+<stop offset="1" stop-color="#6B74A0"/>
+</linearGradient>
+<linearGradient id="paint1_linear_520_489" x1="48.0671" y1="39" x2="48.0671" y2="46.3808" gradientUnits="userSpaceOnUse">
+<stop stop-color="#7F88B4" stop-opacity="0.99"/>
+<stop offset="1" stop-color="#6B74A0"/>
+</linearGradient>
+<linearGradient id="paint2_linear_520_489" x1="39.0671" y1="48" x2="39.0671" y2="55.3808" gradientUnits="userSpaceOnUse">
+<stop stop-color="#7F88B4" stop-opacity="0.99"/>
+<stop offset="1" stop-color="#6B74A0"/>
+</linearGradient>
+<linearGradient id="paint3_linear_520_489" x1="21.0671" y1="48" x2="21.0671" y2="55.3808" gradientUnits="userSpaceOnUse">
+<stop stop-color="#7F88B4" stop-opacity="0.99"/>
+<stop offset="1" stop-color="#6B74A0"/>
+</linearGradient>
+<linearGradient id="paint4_linear_520_489" x1="30.0671" y1="39" x2="30.0671" y2="46.3808" gradientUnits="userSpaceOnUse">
+<stop stop-color="#7F88B4" stop-opacity="0.99"/>
+<stop offset="1" stop-color="#6B74A0"/>
+</linearGradient>
+<linearGradient id="paint5_linear_520_489" x1="21.0335" y1="41" x2="21.0335" y2="45.4285" gradientUnits="userSpaceOnUse">
+<stop stop-color="#7F88B4" stop-opacity="0.99"/>
+<stop offset="1" stop-color="#6B74A0"/>
+</linearGradient>
+<linearGradient id="paint6_linear_520_489" x1="30.0335" y1="50" x2="30.0335" y2="54.4285" gradientUnits="userSpaceOnUse">
+<stop stop-color="#7F88B4" stop-opacity="0.99"/>
+<stop offset="1" stop-color="#6B74A0"/>
+</linearGradient>
+<linearGradient id="paint7_linear_520_489" x1="48.0335" y1="50" x2="48.0335" y2="54.4285" gradientUnits="userSpaceOnUse">
+<stop stop-color="#7F88B4" stop-opacity="0.99"/>
+<stop offset="1" stop-color="#6B74A0"/>
+</linearGradient>
+<linearGradient id="paint8_linear_520_489" x1="12.0335" y1="50" x2="12.0335" y2="54.4285" gradientUnits="userSpaceOnUse">
+<stop stop-color="#7F88B4" stop-opacity="0.99"/>
+<stop offset="1" stop-color="#6B74A0"/>
+</linearGradient>
+<linearGradient id="paint9_linear_520_489" x1="39.0335" y1="41" x2="39.0335" y2="45.4285" gradientUnits="userSpaceOnUse">
+<stop stop-color="#7F88B4" stop-opacity="0.99"/>
+<stop offset="1" stop-color="#6B74A0"/>
+</linearGradient>
+<linearGradient id="paint10_linear_520_489" x1="30.6008" y1="4" x2="30.6008" y2="33.834" gradientUnits="userSpaceOnUse">
+<stop stop-color="#A7B0DC" stop-opacity="0.99"/>
+<stop offset="1" stop-color="#A7B0DC"/>
+</linearGradient>
+<linearGradient id="paint11_linear_520_489" x1="31.4547" y1="4" x2="30.7274" y2="34.5455" gradientUnits="userSpaceOnUse">
+<stop offset="0.296033" stop-color="#39426E" stop-opacity="0"/>
+<stop offset="1" stop-color="#39426E"/>
+</linearGradient>
+</defs>
+</svg>

@@ -14,7 +14,6 @@ const ASSETS = {
   outerRing: '/prototype-dial/outer-ring.svg',
   innerRing: '/prototype-dial/inner-ring.svg',
   innerCore: '/prototype-dial/inner-core.svg',
-  weatherCloud: '/prototype-dial/weather-cloud.svg',
   selectionControlRing: '/prototype-dial/selection-control-ring.svg',
   selectionDashRing: '/prototype-dial/selection-dash-ring.svg',
   selectionInnerRing: '/prototype-dial/selection-inner-ring.svg',
@@ -82,6 +81,9 @@ interface DiskUiPrototypeProps {
   analyser: AnalyserNode | null;
   isPaused?: boolean;
   onOrbClick?: () => void;
+  /** Called whenever the SelectionOverlay (spinning wheel at song boundaries)
+   *  appears or disappears, so the parent can hide/show the DataDrawer. */
+  onOverlayChange?: (active: boolean) => void;
 }
 
 function normalizeDegrees(value: number): number {
@@ -394,16 +396,17 @@ function OrbBezel() {
   );
 }
 
-function NightWeatherIcon() {
+function WeatherIcon(props: { condition: string; isNight: boolean }) {
+  const folder = props.isNight ? 'night' : 'day';
+  const href = `/weather/${folder}/${props.condition}.svg`;
   return (
-    <g className="phone-dial__night-weather" transform="translate(151 48)">
-      <circle cx="47" cy="27" r="25" />
-      <circle className="phone-dial__moon-cutout" cx="57" cy="20" r="25" />
-      <circle className="phone-dial__star" cx="12" cy="15" r="1.7" />
-      <circle className="phone-dial__star" cx="80" cy="10" r="1.2" />
-      <circle className="phone-dial__star" cx="89" cy="42" r="1.4" />
-      <path d="M12 47C16 36 27 31 38 35C43 27 56 29 61 38C71 37 80 43 81 54H12Z" />
-    </g>
+    <image
+      href={href}
+      width="60"
+      height="60"
+      x={DIAL_CENTER.x - 30}
+      y="42"
+    />
   );
 }
 
@@ -426,24 +429,14 @@ function MoonIndicator(props: { x: number; y: number; phase: MoonPhase }) {
 
 function SunIndicator(props: { x: number; y: number }) {
   return (
-    <g
+    <image
       className="phone-dial__sun-indicator phone-dial__celestial-indicator"
-      transform={`translate(${props.x - 39} ${props.y - 39})`}
-    >
-      <circle className="phone-dial__sun-glow" cx="39" cy="39" r="34" />
-      <circle className="phone-dial__sun-disc" cx="39" cy="39" r="23" />
-      <g className="phone-dial__sun-grain">
-        {Array.from({ length: 52 }).map((_, index) => {
-          const angle = (index * 137.5) % 360;
-          const radius = 4 + ((index * 11) % 19);
-          const point = {
-            x: 39 + Math.cos((angle * Math.PI) / 180) * radius,
-            y: 39 + Math.sin((angle * Math.PI) / 180) * radius,
-          };
-          return <circle cx={point.x} cy={point.y} key={index} r={index % 3 === 0 ? 0.8 : 0.55} />;
-        })}
-      </g>
-    </g>
+      href="/sun.svg"
+      width="52"
+      height="52"
+      x={props.x - 26}
+      y={props.y - 26}
+    />
   );
 }
 
@@ -562,7 +555,7 @@ function WaitingDial() {
   );
 }
 
-export default function DiskUiPrototype({ analyser, isPaused, onOrbClick }: DiskUiPrototypeProps) {
+export default function DiskUiPrototype({ analyser, isPaused, onOrbClick, onOverlayChange }: DiskUiPrototypeProps) {
   const songs = useStore((state) => state.songs);
   const currentSongId = useStore((state) => state.currentSongId);
   const isPlaying = useStore((state) => state.isPlaying);
@@ -668,9 +661,13 @@ export default function DiskUiPrototype({ analyser, isPaused, onOrbClick }: Disk
     // reveal. React's effect identity is keyed on [modelSongId] so this only
     // runs when the song actually changes, not on every render.
     setOverlayActive(true);
-    const hideTimer = window.setTimeout(() => setOverlayActive(false), OVERLAY_DURATION_MS);
+    onOverlayChange?.(true);
+    const hideTimer = window.setTimeout(() => {
+      setOverlayActive(false);
+      onOverlayChange?.(false);
+    }, OVERLAY_DURATION_MS);
     return () => window.clearTimeout(hideTimer);
-  }, [modelSongId]);
+  }, [modelSongId, onOverlayChange]);
 
   if (!model) {
     return <WaitingDial />;
@@ -779,21 +776,17 @@ export default function DiskUiPrototype({ analyser, isPaused, onOrbClick }: Disk
           <rect width={FRAME.width} height={FRAME.height} fill="url(#cloudHighlight)" />
         ) : null}
 
-        {model.isNight ? (
-          <>
-            <g className="phone-dial__stars">
-              <circle cx="62" cy="107" r="1.2" />
-              <circle cx="307" cy="143" r="1" />
-              <circle cx="335" cy="295" r="1.3" />
-              <circle cx="92" cy="704" r="1" />
-              <circle cx="289" cy="652" r="1.1" />
-              <circle cx="214" cy="190" r="0.9" />
-            </g>
-            <NightWeatherIcon />
-          </>
-        ) : (
-          <image href={ASSETS.weatherCloud} height="46" width="86" x="153.5" y="54.25" />
+        {model.isNight && (
+          <g className="phone-dial__stars">
+            <circle cx="62" cy="107" r="1.2" />
+            <circle cx="307" cy="143" r="1" />
+            <circle cx="335" cy="295" r="1.3" />
+            <circle cx="92" cy="704" r="1" />
+            <circle cx="289" cy="652" r="1.1" />
+            <circle cx="214" cy="190" r="0.9" />
+          </g>
         )}
+        <WeatherIcon condition={model.weatherCondition} isNight={model.isNight} />
 
         <line
           className="phone-dial__horizon-line"

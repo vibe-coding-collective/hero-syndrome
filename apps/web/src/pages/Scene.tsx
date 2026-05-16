@@ -22,6 +22,7 @@ export default function Scene() {
   const [stage, setStage] = useState<Stage>('starting');
   const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
   const [isPaused, setIsPaused] = useState(false);
+  const [overlayActive, setOverlayActive] = useState(false);
   const songs = useStore((s) => s.songs);
   const currentSongId = useStore((s) => s.currentSongId);
   const currentSong = currentSongId
@@ -95,8 +96,10 @@ export default function Scene() {
 
   return (
     <div className="phone-dial-stage">
-      <DiskUiPrototype analyser={analyser} isPaused={isPaused} onOrbClick={onOrbClick} />
-      {currentSong ? <DataDrawer song={currentSong} /> : null}
+      <DiskUiPrototype analyser={analyser} isPaused={isPaused} onOrbClick={onOrbClick} onOverlayChange={setOverlayActive} />
+      <div className={`phone-data-drawer-wrapper${overlayActive ? ' phone-data-drawer-wrapper--hidden' : ''}`}>
+        {currentSong ? <DataDrawer song={currentSong} /> : null}
+      </div>
       <button
         type="button"
         onClick={onEnd}
