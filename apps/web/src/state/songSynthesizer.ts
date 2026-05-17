@@ -50,6 +50,11 @@ export class SongSynthesizer {
       window.setTimeout(() => this.generateNext().catch(() => undefined), 500);
       return;
     }
+    // Pre-song-1: refuse to ship a song without location. The watchdog
+    // otherwise races the aggregator's first location-bearing tick and
+    // the sparse /generate call wins, blocking the intended
+    // location-gated call behind the inflight guard.
+    if (state.songs.length === 0 && !state.stateVector.location) return;
     this.inflight = true;
     const startTs = performance.now();
     const requestId = String(Date.now());
