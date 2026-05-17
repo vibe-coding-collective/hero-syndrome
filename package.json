@@ -8,7 +8,7 @@
     "dev:worker": "pnpm --filter worker dev",
     "build:web": "pnpm --filter web build",
     "build:worker": "pnpm --filter worker build",
-    "deploy:worker": "pnpm --filter worker deploy",
+    "deploy:worker": "pnpm --filter worker run deploy",
     "deploy:web": "pnpm --filter web build && wrangler pages deploy apps/web/dist --project-name hero-syndrome",
     "typecheck": "pnpm -r typecheck",
     "cosmic-vocab:gen": "pnpm --filter cosmic-vocab-gen run gen",
