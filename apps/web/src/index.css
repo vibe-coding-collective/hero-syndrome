@@ -60,7 +60,7 @@
     left: 50%;
     bottom: 0;
     z-index: 34;
-    width: min(100vw, calc(100dvh * 393 / 852));
+    width: min(100vw, 480px);
     height: 115px;
     min-height: 0;
     color: rgba(248, 247, 242, 0.94);
@@ -341,12 +341,12 @@
   }
 
   .phone-dial {
-    /* Always fills the larger of the two constraints (viewport width or
-       viewport-height-derived width) while preserving the 393:852 aspect. */
+    /* Fills the full viewport; the dial SVG uses preserveAspectRatio="xMidYMid
+       slice" so artwork covers edge-to-edge and the orb stays locked to the
+       container center. */
     position: relative;
-    width: min(100vw, calc(100dvh * 393 / 852));
-    height: min(100dvh, calc(100vw * 852 / 393));
-    aspect-ratio: 393 / 852;
+    width: 100vw;
+    height: 100dvh;
     overflow: hidden;
     background: #90b5d0;
     box-shadow: 0 28px 80px rgba(0, 0, 0, 0.36);
@@ -628,17 +628,18 @@
     text-anchor: middle;
   }
 
-  /* Orb is an HTML layer positioned via percentages relative to the dial
-     container (which preserves a 393:852 aspect ratio). The center maps to the
-     SVG viewBox point (197, 426) = (50.127%, 50%). Width 111/393 = 28.244%.
-     Aspect-ratio: 1/1 keeps it square. Rendering outside the SVG avoids the
-     iOS Safari foreignObject offset that pushed the orb off-center on phones. */
+  /* Orb is an HTML layer centered over the dial. The SVG uses xMidYMid slice,
+     so the viewBox center (197, 426) maps exactly to the container center
+     (50%, 50%). Orb diameter = 111 in viewBox space, so its pixel size is
+     111 × max(vw/393, vh/852) — expressed below as max(28.244vw, 13.028dvh).
+     Rendering outside the SVG avoids the iOS Safari foreignObject offset that
+     pushed the orb off-center on phones. */
   .phone-dial__orb-layer {
     position: absolute;
     top: 50%;
-    left: 50.127%;
+    left: 50%;
     transform: translate(-50%, -50%);
-    width: 28.244%;
+    width: max(28.244vw, 13.028dvh);
     aspect-ratio: 1 / 1;
     pointer-events: none;
     /* Sit above the dial SVG so the orb is on top of the inner-core image but

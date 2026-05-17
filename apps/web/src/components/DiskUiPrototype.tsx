@@ -465,6 +465,7 @@ function SelectionOverlay({ model }: { model: DialViewModel }) {
       <svg
         aria-label={`Selection dial: ${selected.label}`}
         className="phone-dial__location-artboard"
+        preserveAspectRatio="xMidYMid slice"
         role="img"
         viewBox={`0 0 ${FRAME.width} ${FRAME.height}`}
       >
@@ -717,6 +718,7 @@ export default function DiskUiPrototype({ analyser, isPaused, onOrbClick, onOver
       <svg
         aria-label={`Dial state: ${model.phaseLabel}, ${formatHour(model.hour)}`}
         className={`phone-dial__artboard ${model.isNight ? 'phone-dial__artboard--night' : ''} ${overlayActive ? 'phone-dial__artboard--selection-open' : ''}`}
+        preserveAspectRatio="xMidYMid slice"
         role="img"
         viewBox={`0 0 ${FRAME.width} ${FRAME.height}`}
       >
