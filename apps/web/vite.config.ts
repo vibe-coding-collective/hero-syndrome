@@ -17,7 +17,8 @@ export default defineConfig({
         description: 'An adaptive score, generated live from your phone’s signals.',
         theme_color: '#F4EFE3',
         background_color: '#1B1B19',
-        display: 'standalone',
+        display: 'fullscreen',
+        display_override: ['fullscreen', 'standalone'],
         orientation: 'portrait',
         start_url: '/',
         icons: [
